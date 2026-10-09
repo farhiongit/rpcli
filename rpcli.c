@@ -121,7 +121,7 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env) {
   wchar_t *wcs = malloc (sizeof (*wcs));
   *wcs = L'\0';
   size_t length = 0;
-  while (!iswspace (c = fgetwc (stdin)) && c != WEOF) // any character can be part of a command
+  while (!iswspace (c = fgetwc (stdin)) && c != WEOF) // any character can be part of a word
   {
     length++;
     wcs = realloc (wcs, (length + 1) * sizeof (*wcs));
@@ -259,7 +259,7 @@ RPN_goodbye (symrec **sym_table) {
   while (*sym_table) {
     symrec *symref = *sym_table;
     *sym_table = (*sym_table)->next;
-    free ((char *)symref->symbol.name);
+    free (symref->symbol.name);
     free (symref);
   }
   fprintf (stderr, "Good bye!\n");
@@ -530,12 +530,10 @@ RPN_f0a (symbol *symref) {
 
 number
 RPN_set_var (symbol *symref, number val) {
-  if (symref->type == VARIABLE)
-    return symref->value.number = val;
-  else {
-    RPN_error (0, "cannot be set");
-    return UNDEFINED_VALUE;
-  }
+  if (symref->type == VARIABLE && val.type != UNDEFINED)
+    symref->value.number = val;
+
+  return symref->value.number;
 }
 
 number

@@ -145,12 +145,18 @@
 
 %param {context *env}
 
+// For debugging purpose
 %printer { printf ("["); RPN_print_number ($$); printf ("]"); } <number>
 %printer { printf ("[%ls]", $$->name); } <symbol>
 
-// Character tokens (among the ten digits, the 52 lower- and upper-case English letters, and \a\b\t\n\v\f\r !\"#%&'()*+,-./:;<=>?[\\]^_{|}~) are declared automatically.
+// Destructors.
 %destructor { RPN_goodbye (&env->sym_table); } END
+%destructor { symrec *s = env->sym_table;
+              if (s && s->symbol.type == VARIABLE && s->symbol.value.number.type == UNDEFINED)
+                { env->sym_table = s->next; free (s->symbol.name); free (s); }
+            } NEW_VARIABLE
 
+// Character tokens (among the ten digits, the 52 lower- and upper-case English letters, and \a\b\t\n\v\f\r !\"#%&'()*+,-./:;<=>?[\\]^_{|}~) are declared automatically.
 %token END 0 "end of file"
 %token EOL _("end of line")
 %token UNRECOGNIZED _("unrecognized word")
@@ -178,13 +184,13 @@
 // Grammar rules.
 // Always use left recursion only.
 input:
-    %empty { fprintf (stderr, "rpn> "); fflush (stdout); }
-  | input EOL { fprintf (stderr, "rpn> "); fflush (stdout); }
-  | input calculation EOL { fprintf (stderr, "rpn> "); fflush (stdout); }
-  | input set_var EOL { fprintf (stderr, "rpn> "); fflush (stdout); }
-  | input set_newvar EOL { fprintf (stderr, "rpn> "); fflush (stdout); }
-  | input statement EOL { fprintf (stderr, "rpn> "); fflush (stdout); }
-  //| error { printf ("rpn> "); fflush (stdout); }
+    %empty { fprintf (stderr, "rpn> "); }
+  | input EOL { fprintf (stderr, "rpn> "); }
+  | input calculation EOL { fprintf (stderr, "rpn> "); }
+  | input set_var EOL { fprintf (stderr, "rpn> "); }
+  | input set_newvar EOL { fprintf (stderr, "rpn> "); }
+  | input statement EOL { fprintf (stderr, "rpn> "); }
+  //| error { fprintf (stderr, "rpn> "); }
   ;
 
 statement:
