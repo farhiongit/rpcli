@@ -36,7 +36,7 @@ Line | Result | Comment
 `e res 1 + ** ln` | `3` | `res` is equal to the previous result `2`, `e` is a predefined constant
 `2 sqrt ceil neg` | `-2 [integer]` | Conversion to integer
 `10 sqrt round` | `3 [integer]` | Conversion to integer
-`r = 1e6 rand * floor` | `r = 129474 [integer]` | `r` is defined as a random integer in [0 ; 1000000 [
+`r = 1e6 rand * floor` | `r = 129474 [integer]` | `r` is defined as a random integer in [ 0 ; 1000000 [
 `vars` | `r = 129474 ...` | List all constants and user-defined variables
 `exit` | `Good bye!` | Quit
 
@@ -60,7 +60,7 @@ Word | Description
 
 Word | Description
 --|--
-`rand` | Random value
+`rand` | Decimal random value in [ 0 ; 1 [
 `_` | Value of the last argument of the previous operation
 `res` | Value of the result of the last operation
 
