@@ -53,8 +53,8 @@ Word | Description
 
 Word | Description
 --|--
-`e` | e
-`pi` | pi
+`e` | *e*
+`pi` | *π*
 
 ### Pre-defined variables
 
@@ -115,6 +115,6 @@ Word | Description
 `//` | Quotient
 `%` | Modulo
 `&` | And
-`|` | Or
+`\|` | Or
 `^` | Xor
 
