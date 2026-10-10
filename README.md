@@ -77,9 +77,7 @@ Word | Description
 
 Word | Description
 --|--
-`neg` | Opposite
 `inv` | Inverse
-`abs` | Absolute value
 `sin` | Sinus
 `cos` | Cosinus
 `tan` | Tangent
@@ -96,7 +94,6 @@ Word | Description
 `ln` | Natural logarithm
 `log` | Logarithm
 `sqrt` | Square root
-`sqr` | Square
 
 ### Unary functions converting to integer
 
@@ -106,6 +103,14 @@ Word | Description
 `ceil` | Ceil
 `floor` | Floor
 `~` | [Two's complement](https://en.wikipedia.org/wiki/Two%27s_complement)
+
+### Unary functions
+
+Word | Description
+--|--
+`sqr` | Square
+`abs` | Absolute value
+`neg` | Opposite
 
 ### Binary functions
 

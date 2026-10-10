@@ -23,20 +23,23 @@
   };
 
 
-  typedef integer (*iF) ();
+  typedef integer (*iF) (void);
   typedef integer (*iFi) (integer);
   typedef integer (*iFd) (decimal);
   typedef integer (*iFii) (integer, integer);
   typedef integer (*iFid) (integer, decimal);
   typedef integer (*iFdi) (decimal, integer);
   typedef integer (*iFdd) (decimal, decimal);
-  typedef decimal (*dF) ();
+  typedef decimal (*dF) (void);
   typedef decimal (*dFi) (integer);
   typedef decimal (*dFd) (decimal);
   typedef decimal (*dFii) (integer, integer);
   typedef decimal (*dFid) (integer, decimal);
   typedef decimal (*dFdi) (decimal, integer);
   typedef decimal (*dFdd) (decimal, decimal);
+  typedef number (*nF) (void);
+  typedef number (*nFn) (number);
+  typedef number (*nFnn) (number, number);
 
   typedef struct function function;
   struct function {
@@ -54,6 +57,9 @@
            DFID,
            DFDI,
            DFDD,
+           NF,
+           NFN,
+           NFNN,
     } type;
     union {
       iF iF;
@@ -70,6 +76,9 @@
       dFid dFid;
       dFdi dFdi;
       dFdd dFdd;
+      nF nF;
+      nFn nFn;
+      nFnn nFnn;
     } value;
   };
 
@@ -108,16 +117,7 @@
   void RPN_error (context *context, char const *);
 
   number RPN_add (number, number);
-  number RPN_sub (number, number);
   number RPN_mul (number, number);
-  number RPN_quotient (number, number);
-  number RPN_div (number, number);
-  number RPN_mod (number, number);
-  number RPN_and (number, number);
-  number RPN_or (number, number);
-  number RPN_xor (number, number);
-  number RPN_pow (number, number);
-  number RPN_compl (number);
   number RPN_f0a (symbol *);
   number RPN_f1a (symbol *, number);
   number RPN_f2a (symbol *, number, number);
@@ -147,12 +147,10 @@
 %printer { fprintf (stderr, "%ls", $$->name); } <symbol>
 
 // Character tokens (among the ten digits, the 52 lower- and upper-case English letters, and \a\b\t\n\v\f\r !\"#%&'()*+,-./:;<=>?[\\]^_{|}~) are declared automatically.
-%token END 0 "end of file"  // the end token (token 0) is specifically redefined.
+%token END 0 _("end of file")  // the end token (token 0) is specifically redefined.
 %token EOL _("end of line")
 %token UNRECOGNIZED _("unrecognized word")
 
-%token POW _("power")
-%token QUOTIENT _("quotient")
 %token MEMORY
 
 %token <number> NUMBER _("number")
@@ -232,17 +230,6 @@ expression:
   | F0A { env->last_res = $$ = RPN_f0a ($1); }
   | expression[first] F1A[function] { env->last_res = $$ = RPN_f1a ($function, env->last_x = $first); }
   | expression[first] expression[second] F2A[function] { env->last_res = $$ = RPN_f2a ($function, $first, env->last_x = $second); }
-  | expression[first] expression[second] '+' { env->last_res = $$ = RPN_add ($first, env->last_x = $second); }
-  | expression[first] expression[second] '-' { env->last_res = $$ = RPN_sub ($first, env->last_x = $second); }
-  | expression[first] expression[second] '*' { env->last_res = $$ = RPN_mul ($first, env->last_x = $second); }
-  | expression[first] expression[second] '/' { env->last_res = $$ = RPN_div ($first, env->last_x = $second); }
-  | expression[first] expression[second] QUOTIENT { env->last_res = $$ = RPN_quotient ($first, env->last_x = $second); }
-  | expression[first] expression[second] '%' { env->last_res = $$ = RPN_mod ($first, env->last_x = $second); }
-  | expression[first] expression[second] POW { env->last_res = $$ = RPN_pow ($first, env->last_x = $second); }
-  | expression[first] expression[second] '&' { env->last_res = $$ = RPN_and ($first, env->last_x = $second); }
-  | expression[first] expression[second] '|' { env->last_res = $$ = RPN_or ($first, env->last_x = $second); }
-  | expression[first] expression[second] '^' { env->last_res = $$ = RPN_xor ($first, env->last_x = $second); }
-  | expression[first] '~' { env->last_res = $$ = RPN_compl (env->last_x = $first); }
   ;
 
 %%
