@@ -139,9 +139,15 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env) {
     token = RPN_NUMBER;
   }
 
-  // last result
+  // result of the last operation
   if (token < 0 && !wcscmp (L"res", wcs)) {
     RPN_lval->number = env->last_res;
+    token = RPN_NUMBER;
+  }
+
+  // result of the last calculation
+  if (token < 0 && !wcscmp (L"ans", wcs)) {
+    RPN_lval->number = env->last_ans;
     token = RPN_NUMBER;
   }
 

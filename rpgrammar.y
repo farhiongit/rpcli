@@ -90,7 +90,7 @@
   typedef struct context context;
   struct context {
     symrec *sym_table;
-    number last_x, last_res;
+    number last_x, last_res, last_ans;
   };
 }
 
@@ -207,28 +207,28 @@ set_newvar:
   ;
 
 calculation:
-    sum_of_expressions '+' { $$ = $1 ; RPN_print_number ($1) && fprintf (stderr, "\n"); }
-  | product_of_expressions '*' { $$ = $1 ; RPN_print_number ($1) && fprintf (stderr, "\n"); }
-  | expression { $$ = $1 ; RPN_print_number ($1) && fprintf (stderr, "\n"); }
+    sum_of_expressions '+' { env->last_ans = env->last_res = $$ = $1 ; RPN_print_number ($1) && fprintf (stderr, "\n"); }
+  | product_of_expressions '*' { env->last_ans = env->last_res = $$ = $1 ; RPN_print_number ($1) && fprintf (stderr, "\n"); }
+  | expression { env->last_ans = env->last_res = $$ = $1 ; RPN_print_number ($1) && fprintf (stderr, "\n"); }
   //| error
   ;
 
 // Always use left recursion only.
 sum_of_expressions:
-    expression[first] expression[second] expression[third] { env->last_res = $$ = RPN_add (RPN_add ($first, $second), $third); }
-  | sum_of_expressions[first] expression[second] { env->last_res = $$ = RPN_add ($first, $second); }
+    expression[first] expression[second] expression[third] { env->last_res = $$ = RPN_add (RPN_add ($first, $second), env->last_x = $third); }
+  | sum_of_expressions[first] expression[second] { env->last_res = $$ = RPN_add ($first, env->last_x = $second); }
   ;
 
 // Always use left recursion only.
 product_of_expressions:
-    expression[first] expression[second] expression[third] { env->last_res = $$ = RPN_mul (RPN_mul ($first, $second), $third); }
-  | product_of_expressions[first] expression[second] { env->last_res = $$ = RPN_mul ($first, $second); }
+    expression[first] expression[second] expression[third] { env->last_res = $$ = RPN_mul (RPN_mul ($first, $second), env->last_x = $third); }
+  | product_of_expressions[first] expression[second] { env->last_res = $$ = RPN_mul ($first, env->last_x = $second); }
   ;
 
 expression:
-    NUMBER { $$ = $1; }
-  | CONSTANT { $$ = RPN_f0a ($1); }
-  | VARIABLE { $$ = RPN_f0a ($1); }
+    NUMBER { env->last_res = $$ = $1; }
+  | CONSTANT { env->last_res = $$ = RPN_f0a ($1); }
+  | VARIABLE { env->last_res = $$ = RPN_f0a ($1); }
   | F0A { env->last_res = $$ = RPN_f0a ($1); }
   | expression[first] F1A[function] { env->last_res = $$ = RPN_f1a ($function, env->last_x = $first); }
   | expression[first] expression[second] F2A[function] { env->last_res = $$ = RPN_f2a ($function, $first, env->last_x = $second); }
