@@ -87,11 +87,6 @@
   };
 
   typedef struct symrec symrec;
-  struct symrec {
-    symbol symbol;
-    struct symrec *next;
-  };
-
   typedef struct context context;
   struct context {
     symrec *sym_table;
@@ -103,6 +98,7 @@
 %union value {
   number number;
   symbol *symbol;
+  wchar_t *newvar_name;
 }
 
 // Prototypes inserted into both the parser header file and the parser implementation file that depend on YYSTYPE or YYLTYPE.
@@ -125,10 +121,12 @@
   number RPN_f0a (symbol *);
   number RPN_f1a (symbol *, number);
   number RPN_f2a (symbol *, number, number);
+
   number RPN_set_var (symbol *symref, number val);
+  symbol *RPN_add_var (symrec **sym_table, wchar_t *name);
 
   void RPN_goodbye (symrec **sym_table);
-  void RPN_print_number (number);
+  int RPN_print_number (number);
   void RPN_print_vars (symrec *sym_table);
 }
 
@@ -137,7 +135,6 @@
 }
 
 // Declarations.
-%defines
 %define api.pure
 %define parse.error detailed
 %define api.token.prefix {RPN_}
@@ -146,18 +143,11 @@
 %param {context *env}
 
 // For debugging purpose
-%printer { printf ("["); RPN_print_number ($$); printf ("]"); } <number>
-%printer { printf ("[%ls]", $$->name); } <symbol>
-
-// Destructors.
-%destructor { RPN_goodbye (&env->sym_table); } END
-%destructor { symrec *s = env->sym_table;
-              if (s && s->symbol.type == VARIABLE && s->symbol.value.number.type == UNDEFINED)
-                { env->sym_table = s->next; free (s->symbol.name); free (s); }
-            } NEW_VARIABLE
+%printer { RPN_print_number ($$); } <number>
+%printer { fprintf (stderr, "%ls", $$->name); } <symbol>
 
 // Character tokens (among the ten digits, the 52 lower- and upper-case English letters, and \a\b\t\n\v\f\r !\"#%&'()*+,-./:;<=>?[\\]^_{|}~) are declared automatically.
-%token END 0 "end of file"
+%token END 0 "end of file"  // the end token (token 0) is specifically redefined.
 %token EOL _("end of line")
 %token UNRECOGNIZED _("unrecognized word")
 
@@ -168,7 +158,7 @@
 %token <number> NUMBER _("number")
 %token <symbol> CONSTANT _("constant")
 %token <symbol> VARIABLE _("variable")
-%token <symbol> NEW_VARIABLE _("new variable")
+%token <newvar_name> NEW_VARIABLE _("new variable")
 
 %token <symbol> F0A _("constant function")
 %token <symbol> F1A _("unary function")
@@ -177,6 +167,13 @@
 %type <number> expression
 %type <number> sum_of_expressions
 %type <number> product_of_expressions
+%type <number> calculation
+
+// Invoked for the end token (token 0) when specifically redefined.
+%destructor { RPN_goodbye (&env->sym_table); } END
+// Destructors directives define code that is called on error recovery when a symbol is automatically discarded.
+// Right-hand side symbols of a rule that explicitly triggers a syntax error via YYERROR are not discarded automatically.
+%destructor { free ($$); } <newvar_name>
 
 %glr-parser // Needed for sum_of_expressions and product_of_expressions to work.
 %start input
@@ -199,23 +196,20 @@ statement:
   ;
 
 set_var:
-    VARIABLE[var] '=' sum_of_expressions '+' { fprintf (stderr, "%ls ", $var->name); RPN_print_number (RPN_set_var ($var, $sum_of_expressions)); fprintf (stderr, "\n"); }
-  | VARIABLE[var] '=' product_of_expressions '*' { fprintf (stderr, "%ls ", $var->name); RPN_print_number (RPN_set_var ($var, $product_of_expressions)); fprintf (stderr, "\n"); }
-  | VARIABLE[var] '=' expression { fprintf (stderr, "%ls ", $var->name); RPN_print_number (RPN_set_var ($var, $expression)); fprintf (stderr, "\n"); }
+    VARIABLE[var] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var ($var, $calculation); }
   //| error
   ;
 
 set_newvar:
-    NEW_VARIABLE[var] '=' sum_of_expressions '+' { fprintf (stderr, "%ls ", $var->name); RPN_print_number (RPN_set_var ($var, $sum_of_expressions)); fprintf (stderr, "\n"); }
-  | NEW_VARIABLE[var] '=' product_of_expressions '*' { fprintf (stderr, "%ls ", $var->name); RPN_print_number (RPN_set_var ($var, $product_of_expressions)); fprintf (stderr, "\n"); }
-  | NEW_VARIABLE[var] '=' expression { fprintf (stderr, "%ls ", $var->name); RPN_print_number (RPN_set_var ($var, $expression)); fprintf (stderr, "\n"); }
+    NEW_VARIABLE[varname] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var (RPN_add_var (&env->sym_table, $varname), $calculation);
+                                            free ($varname); }
   //| error
   ;
 
 calculation:
-    sum_of_expressions '+' { RPN_print_number ($1); fprintf (stderr, "\n"); }
-  | product_of_expressions '*' { RPN_print_number ($1); fprintf (stderr, "\n"); }
-  | expression { RPN_print_number ($1); fprintf (stderr, "\n"); }
+    sum_of_expressions '+' { $$ = $1 ; RPN_print_number ($1) && fprintf (stderr, "\n"); }
+  | product_of_expressions '*' { $$ = $1 ; RPN_print_number ($1) && fprintf (stderr, "\n"); }
+  | expression { $$ = $1 ; RPN_print_number ($1) && fprintf (stderr, "\n"); }
   //| error
   ;
 

@@ -16,6 +16,11 @@ typedef jmp_buf exception;
 
 #define UNDEFINED_VALUE ((number){ .type = UNDEFINED })
 
+struct symrec {
+  symbol symbol;
+  struct symrec *next;
+};
+
 static exception conversion_error;
 static exception div_by_zero_error;
 
@@ -97,13 +102,9 @@ symrec_add (symrec **sym_table, symbol element) {
 
 static symbol *
 symrec_add_var (symrec **sym_table, wchar_t *name) {
-  symbol *s;
-  if ((s = symrec_get (*sym_table, name)))
-    return s->type == VARIABLE ? s : 0;
-  else
-    return symrec_add (sym_table, (symbol){ .name = name,
-                                            .type = VARIABLE,
-                                            .value.number = UNDEFINED_VALUE });
+  return symrec_add (sym_table, (symbol){ .name = name,
+                                          .type = VARIABLE,
+                                          .value.number = UNDEFINED_VALUE });
 }
 
 int
@@ -232,7 +233,7 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env) {
           break;
         }
       else {
-        RPN_lval->symbol = symrec_add_var (&env->sym_table, wcs);
+        RPN_lval->newvar_name = wcsdup (wcs);
         token = RPN_NEW_VARIABLE;
       }
     }
@@ -294,18 +295,19 @@ _rpn_random (void) {
   return 0;
 }
 
-void
+int
 RPN_print_number (number a) {
+  int ret = 0;
   switch (a.type) {
   case INTEGER:
     fprintf (stderr, "= ");
-    printf ("%lli", a.value.integer);
+    ret = printf ("%lli", a.value.integer);
     fflush (stdout);
     fprintf (stderr, " [integer]");
     break;
   case DECIMAL:
     fprintf (stderr, "= ");
-    printf ("%Lg", a.value.decimal);
+    ret = printf ("%Lg", a.value.decimal);
     fflush (stdout);
     break;
   case UNDEFINED:
@@ -314,6 +316,7 @@ RPN_print_number (number a) {
   default:
     abort ();
   }
+  return ret;
 }
 
 void
@@ -535,6 +538,9 @@ RPN_set_var (symbol *symref, number val) {
 
   return symref->value.number;
 }
+
+symbol *
+RPN_add_var (symrec **sym_table, wchar_t *name) { return symrec_add_var (sym_table, name); }
 
 number
 RPN_f1a (symbol *symref, number a) {
