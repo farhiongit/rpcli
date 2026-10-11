@@ -254,13 +254,13 @@ RPN_error (context *env, char const *msg) {
 
 void
 RPN_goodbye (symrec **sym_table) {
+  fprintf (stderr, "Cleanup.\n");
   while (*sym_table) {
     symrec *symref = *sym_table;
     *sym_table = (*sym_table)->next;
     free (symref->symbol.name);
     free (symref);
   }
-  fprintf (stderr, "Good bye!\n");
 }
 
 static number
@@ -271,6 +271,11 @@ _rpn_inverse (decimal x) { return (decimal)1 / x; }
 
 static number
 _rpn_opposite (number x) {
+  catch_exception (conversion_error) {
+    errno = EPERM;
+    return UNDEFINED_VALUE;
+  }
+
   catch_exception (out_of_range_error) {
     errno = EPERM;
     RPN_error (0, "out of range");
@@ -398,40 +403,30 @@ _rpn_div (number a, number b) {
   return from_decimal (to_decimal (a) / to_decimal (b));
 }
 
-static number
-_rpn_quotient (number a, number b) {
-  catch_exception (conversion_error) {
-    errno = EPERM;
-    return UNDEFINED_VALUE;
-  }
-
+static integer
+_rpn_quotient (integer a, integer b) {
   catch_exception (div_by_zero_error) {
     errno = EPERM;
     RPN_error (0, "division by zero");
-    return UNDEFINED_VALUE;
+    return 0;
   }
 
-  if (to_integer (b))
-    return from_integer (to_integer (a) / to_integer (b));
+  if (b)
+    return a / b;
 
   throw_exception (div_by_zero_error);
 }
 
-static number
-_rpn_mod (number a, number b) {
-  catch_exception (conversion_error) {
-    errno = EPERM;
-    return UNDEFINED_VALUE;
-  }
-
+static integer
+_rpn_mod (integer a, integer b) {
   catch_exception (div_by_zero_error) {
     errno = EPERM;
     RPN_error (0, "division by zero");
-    return UNDEFINED_VALUE;
+    return 0;
   }
 
-  if (to_integer (b))
-    return from_integer (to_integer (a) % to_integer (b));
+  if (b)
+    return a % b;
 
   throw_exception (div_by_zero_error);
 }
@@ -469,48 +464,25 @@ _rpn_pow (number a, number b) {
   throw_exception (conversion_error);
 }
 
-static number
-_rpn_and (number a, number b) {
-  catch_exception (conversion_error) {
-    errno = EPERM;
-    return UNDEFINED_VALUE;
-  }
+static integer
+_rpn_and (integer a, integer b) { return a & b; }
 
-  return from_integer (to_integer (a) & to_integer (b));
-}
+static integer
+_rpn_or (integer a, integer b) { return a | b; }
 
-static number
-_rpn_or (number a, number b) {
-  catch_exception (conversion_error) {
-    errno = EPERM;
-    return UNDEFINED_VALUE;
-  }
+static integer
+_rpn_xor (integer a, integer b) { return a ^ b; }
 
-  return from_integer (to_integer (a) | to_integer (b));
-}
-
-static number
-_rpn_xor (number a, number b) {
-  catch_exception (conversion_error) {
-    errno = EPERM;
-    return UNDEFINED_VALUE;
-  }
-
-  return from_integer (to_integer (a) ^ to_integer (b));
-}
-
-static number
-_rpn_compl (number a) {
-  catch_exception (conversion_error) {
-    errno = EPERM;
-    return UNDEFINED_VALUE;
-  }
-
-  return from_integer (~to_integer (a));
-}
+static integer
+_rpn_compl (integer a) { return ~a; }
 
 static number
 _rpn_abs (number a) {
+  catch_exception (conversion_error) {
+    errno = EPERM;
+    return UNDEFINED_VALUE;
+  }
+
   catch_exception (out_of_range_error) {
     errno = EPERM;
     RPN_error (0, "out of range");
@@ -737,10 +709,16 @@ main (void) {
   X;
 
 #undef X
+#define X \
+  DO (L"~", _rpn_compl);
+#undef DO
+#define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFI, .value.iFi = _ (_val) } })
+  X;
+
+#undef X
 #define X                \
   DO (L"abs", _rpn_abs); \
   DO (L"sqr", _rpn_sqr); \
-  DO (L"~", _rpn_compl); \
   DO (L"neg", _rpn_opposite);
 #undef DO
 #define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = NFN, .value.nFn = _ (_val) } })
@@ -748,16 +726,22 @@ main (void) {
 
 #undef X
 #define X                    \
-  DO (L"+", RPN_add);        \
-  DO (L"-", _rpn_sub);       \
-  DO (L"*", RPN_mul);        \
-  DO (L"/", _rpn_div);       \
   DO (L"//", _rpn_quotient); \
   DO (L"%", _rpn_mod);       \
-  DO (L"**", _rpn_pow);      \
   DO (L"|", _rpn_or);        \
   DO (L"&", _rpn_and);       \
   DO (L"^", _rpn_xor);
+#undef DO
+#define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFII, .value.iFii = _ (_val) } })
+  X;
+
+#undef X
+#define X              \
+  DO (L"+", RPN_add);  \
+  DO (L"-", _rpn_sub); \
+  DO (L"*", RPN_mul);  \
+  DO (L"/", _rpn_div); \
+  DO (L"**", _rpn_pow);
 #undef DO
 #define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = NFNN, .value.nFnn = _ (_val) } })
   X;

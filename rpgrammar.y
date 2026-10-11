@@ -162,16 +162,15 @@
 %token <symbol> F1A _("unary function")
 %token <symbol> F2A _("binary function")
 
-%type <number> expression
-%type <number> sum_of_expressions
-%type <number> product_of_expressions
-%type <number> calculation
+%type <number> expression sum_of_expressions product_of_expressions calculation input
 
-// Invoked for the end token (token 0) when specifically redefined.
-%destructor { RPN_goodbye (&env->sym_table); } END
+// Invoked for the specifically redefined end token (token 0) when normal exit (no error).
+%destructor { RPN_goodbye (&env->sym_table); fprintf (stderr, "Bye !\n"); } END
 // Destructors directives define code that is called on error recovery when a symbol is automatically discarded.
 // Right-hand side symbols of a rule that explicitly triggers a syntax error via YYERROR are not discarded automatically.
 %destructor { free ($$); } <newvar_name>
+// Invoked on error recovery and normal exit (no error).
+//%destructor {  } input;
 
 %glr-parser // Needed for sum_of_expressions and product_of_expressions to work.
 %start input
