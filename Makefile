@@ -22,7 +22,7 @@ rpcli.o: rpcli.c rpgrammar.tab.h
 	bison $(BFLAGS) --header="$@" -o "${@:.h=.c}" "$<"
 
 %.tab.c: %.y
-	bison $(BFLAGS) --header="${@:.c=.h}" -o "$@" "$<"
+	bison $(BFLAGS) -o "$@" "$<"
 
 %.tab.o: CFLAGS+=-Wno-switch-enum -Wno-unused-value
 %.tab.o: %.tab.c
