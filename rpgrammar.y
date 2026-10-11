@@ -162,7 +162,7 @@
 %token <symbol> F1A _("unary function")
 %token <symbol> F2A _("binary function")
 
-%type <number> expression sum_of_expressions product_of_expressions calculation input
+%type <number> expression sum_of_expressions product_of_expressions calculation
 
 // Invoked for the specifically redefined end token (token 0) when normal exit (no error).
 %destructor { RPN_goodbye (&env->sym_table); fprintf (stderr, "Bye !\n"); } END
@@ -173,6 +173,8 @@
 //%destructor {  } input;
 
 %glr-parser // Needed for sum_of_expressions and product_of_expressions to work.
+%expect 12
+%expect-rr 4
 %start input
 %%
 // Grammar rules.
@@ -180,12 +182,16 @@
 input:
     %empty { fprintf (stderr, "rpn> "); }
   | input EOL { fprintf (stderr, "rpn> "); }
-  | input calculation EOL { fprintf (stderr, "rpn> "); }
-  | input set_var EOL { fprintf (stderr, "rpn> "); }
-  | input set_newvar EOL { fprintf (stderr, "rpn> "); }
-  | input statement EOL { fprintf (stderr, "rpn> "); }
-  //| error { fprintf (stderr, "rpn> "); }
+  | input command EOL { fprintf (stderr, "rpn> "); }
+  //| error EOL { fprintf (stderr, "Recovering...\nrpn> "); }
   ;
+
+command:
+    calculation
+  | set_var
+  | set_newvar
+  | statement
+  //| error
 
 statement:
     MEMORY { RPN_print_vars (env->sym_table); }

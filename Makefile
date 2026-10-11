@@ -1,6 +1,6 @@
 CFLAGS+=-Wall
 LDLIBS=-lm
-BFLAGS+=--language=C
+BFLAGS+=--language=C -Werror
 
 #RUNNER=valgrind --leak-check=full
 #CFLAGS+=-g
@@ -19,10 +19,10 @@ rpcli.o: rpcli.c rpgrammar.tab.h
 .INTERMEDIATE: rpgrammar.tab.c
 
 %.tab.h: %.y
-	bison $(BFLAGS) --header="$@" -o /dev/null "$<"
+	bison $(BFLAGS) --header="$@" -o "${@:.h=.c}" "$<"
 
 %.tab.c: %.y
-	bison $(BFLAGS) -o "$@" "$<"
+	bison $(BFLAGS) --header="${@:.c=.h}" -o "$@" "$<"
 
 %.tab.o: CFLAGS+=-Wno-switch-enum -Wno-unused-value
 %.tab.o: %.tab.c
