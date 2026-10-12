@@ -2,7 +2,7 @@
 
 This is an extended version of the minimalistic Reverse Polish Notation calculator (using postfix operators) given as an example in the [GNU bison documentation](https://www.gnu.org/software/bison/manual/bison.html#RPN-Calc).
 
-As a parser (`bison`) is used, the stack of the terms of the RPN expression is automatically managed by the parser through its rules (as compared to our old beloved HP calculators).
+As a parser (`bison`) is used, the stack of the terms of the RPN expression is automatically managed by the parser through its rules (as compared to our old beloved [HP calculators](https://en.wikipedia.org/wiki/HP-42S)).
 
 The calculator handles:
 
@@ -73,6 +73,14 @@ Word | Description
 `res` | Value of the previous operand
 `ans` | Value of the result of the calculation of the last command line
 
+### Unary functions
+
+Word | Description
+--|--
+`sqr` | Square
+`abs` | Absolute value
+`neg` | Opposite
+
 ### Unary functions converting to decimal
 
 Word | Description
@@ -95,6 +103,13 @@ Word | Description
 `log` | Logarithm
 `sqrt` | Square root
 
+### Unary functions on integer
+
+Word | Description
+--|--
+`~` | [Two's complement](https://en.wikipedia.org/wiki/Two%27s_complement)
+`!` | Factorial
+
 ### Unary functions converting to integer
 
 Word | Description
@@ -102,15 +117,6 @@ Word | Description
 `round` | Round
 `ceil` | Ceil
 `floor` | Floor
-`~` | [Two's complement](https://en.wikipedia.org/wiki/Two%27s_complement)
-
-### Unary functions
-
-Word | Description
---|--
-`sqr` | Square
-`abs` | Absolute value
-`neg` | Opposite
 
 ### Binary functions
 
@@ -122,7 +128,7 @@ Word | Description
 `/` | Division
 `**` | Power of
 
-### Integer binary functions
+### Binary functions on integers
 
 Word | Description
 --|--

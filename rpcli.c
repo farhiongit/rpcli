@@ -113,7 +113,7 @@ symrec_add_var (symrec **sym_table, wchar_t *name) {
 int
 RPN_lex (RPN_STYPE *RPN_lval, context *env) {
   wint_t c;
-  while (iswblank (c = fgetwc (stdin))) // a space or a tab
+  while (iswblank (c = fgetwc (RPN_STDIN))) // a space or a tab
     continue;
 
   if (iswspace (c)) // but not blank -> '\n', '\r', '\v', '\f'
@@ -121,18 +121,18 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env) {
   if (c == WEOF)
     return RPN_END;
 
-  ungetwc (c, stdin);
+  ungetwc (c, RPN_STDIN);
   wchar_t *wcs = malloc (sizeof (*wcs));
   *wcs = L'\0';
   size_t length = 0;
-  while (!iswspace (c = fgetwc (stdin)) && c != WEOF) // any character can be part of a word
+  while (!iswspace (c = fgetwc (RPN_STDIN)) && c != WEOF) // any character can be part of a word
   {
     length++;
     wcs = realloc (wcs, (length + 1) * sizeof (*wcs));
     wcs[length - 1] = (wchar_t)c;
     wcs[length] = L'\0';
   }
-  ungetwc (c, stdin);
+  ungetwc (c, RPN_STDIN);
 
   int token = -1;
 
@@ -249,15 +249,14 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env) {
 void
 RPN_error (context *env, char const *msg) {
   (void)env;
-  fprintf (stderr, "ERROR: %s.\n", _ (msg));
+  fprintf (RPN_STDERR, "ERROR: %s.\n", _ (msg));
 }
 
 void
-RPN_goodbye (symrec **sym_table) {
-  fprintf (stderr, "Cleanup.\n");
-  while (*sym_table) {
-    symrec *symref = *sym_table;
-    *sym_table = (*sym_table)->next;
+RPN_cleanup (context *env) {
+  while (env->sym_table) {
+    symrec *symref = env->sym_table;
+    env->sym_table = env->sym_table->next;
     free (symref->symbol.name);
     free (symref);
   }
@@ -315,19 +314,19 @@ _rpn_random (void) {
 }
 
 int
-RPN_print_number (number a) {
+RPN_print_number (number a, context *env) {
   int ret = 0;
   switch (a.type) {
   case INTEGER:
-    fprintf (stderr, "= ");
+    fprintf (RPN_STDERR, "= ");
     ret = printf ("%lli", a.value.integer);
-    fflush (stdout);
-    fprintf (stderr, " [integer]");
+    fflush (RPN_STDOUT);
+    fprintf (RPN_STDERR, " [integer]");
     break;
   case DECIMAL:
-    fprintf (stderr, "= ");
+    fprintf (RPN_STDERR, "= ");
     ret = printf ("%Lg", a.value.decimal);
-    fflush (stdout);
+    fflush (RPN_STDOUT);
     break;
   case UNDEFINED:
     // return printf ("= ?");
@@ -339,14 +338,14 @@ RPN_print_number (number a) {
 }
 
 void
-RPN_print_vars (symrec *sym_table) {
+RPN_print_vars (symrec *sym_table, context *env) {
   for (symrec *s = sym_table; s; s = s->next)
     switch (s->symbol.type) {
     case CONSTANT:
     case VARIABLE:
-      fprintf (stderr, "%ls ", s->symbol.name);
-      RPN_print_number (s->symbol.value.number);
-      fprintf (stderr, "\n");
+      fprintf (RPN_STDERR, "%ls ", s->symbol.name);
+      RPN_print_number (s->symbol.value.number, env);
+      fprintf (RPN_STDERR, "\n");
     default:
     }
 }
@@ -475,6 +474,26 @@ _rpn_xor (integer a, integer b) { return a ^ b; }
 
 static integer
 _rpn_compl (integer a) { return ~a; }
+
+static integer
+_rpn_fact (integer a) {
+  catch_exception (out_of_range_error) {
+    errno = EPERM;
+    RPN_error (0, "out of range");
+    return 0;
+  }
+
+  integer ret = 1;
+  if (a < 0)
+    throw_exception (out_of_range_error);
+
+  for (; a > 0; a--)
+    if (a * ret < 0)
+      throw_exception (out_of_range_error);
+    else
+      ret *= a;
+  return ret;
+}
 
 static number
 _rpn_abs (number a) {
@@ -654,19 +673,18 @@ RPN_f2a (symbol *symref, number a, number b) {
   /* error handling */
   throw_exception (conversion_error);
 }
-//=============== MAIN ====================
-int
-main (void) {
-  setlocale (LC_ALL, "");
 
-  symrec *sym_table = 0;
+void
+RPN_init (context *env) {
+  RPN_cleanup (env);
+  env->sym_table = 0;
 
 #undef X
 #define X              \
   DO (L"e", expl (1)); \
   DO (L"pi", acos (-1));
 #undef DO
-#define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = CONSTANT, .value.number = (number){ .type = DECIMAL, .value.decimal = _ (_val) } })
+#define DO(_name, _val) symrec_add (&env->sym_table, (symbol){ .name = _name, .type = CONSTANT, .value.number = (number){ .type = DECIMAL, .value.decimal = _ (_val) } })
   X;
 
 #undef X
@@ -689,14 +707,14 @@ main (void) {
   DO (L"sqrt", sqrtl);   \
   DO (L"inv", _rpn_inverse);
 #undef DO
-#define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = DFD, .value.dFd = _ (_val) } })
+#define DO(_name, _val) symrec_add (&env->sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = DFD, .value.dFd = _ (_val) } })
   X;
 
 #undef X
 #define X \
   DO (L"rand", _rpn_random);
 #undef DO
-#define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = DF, .value.dF = _ (_val) } })
+#define DO(_name, _val) symrec_add (&env->sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = DF, .value.dF = _ (_val) } })
   X;
 
 #undef X
@@ -705,14 +723,15 @@ main (void) {
   DO (L"ceil", _rpn_ceil); \
   DO (L"floor", _rpn_floor);
 #undef DO
-#define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFD, .value.iFd = _ (_val) } })
+#define DO(_name, _val) symrec_add (&env->sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFD, .value.iFd = _ (_val) } })
   X;
 
 #undef X
-#define X \
-  DO (L"~", _rpn_compl);
+#define X                \
+  DO (L"~", _rpn_compl); \
+  DO (L"!", _rpn_fact);
 #undef DO
-#define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFI, .value.iFi = _ (_val) } })
+#define DO(_name, _val) symrec_add (&env->sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFI, .value.iFi = _ (_val) } })
   X;
 
 #undef X
@@ -721,7 +740,7 @@ main (void) {
   DO (L"sqr", _rpn_sqr); \
   DO (L"neg", _rpn_opposite);
 #undef DO
-#define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = NFN, .value.nFn = _ (_val) } })
+#define DO(_name, _val) symrec_add (&env->sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = NFN, .value.nFn = _ (_val) } })
   X;
 
 #undef X
@@ -732,7 +751,7 @@ main (void) {
   DO (L"&", _rpn_and);       \
   DO (L"^", _rpn_xor);
 #undef DO
-#define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFII, .value.iFii = _ (_val) } })
+#define DO(_name, _val) symrec_add (&env->sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFII, .value.iFii = _ (_val) } })
   X;
 
 #undef X
@@ -743,8 +762,15 @@ main (void) {
   DO (L"/", _rpn_div); \
   DO (L"**", _rpn_pow);
 #undef DO
-#define DO(_name, _val) symrec_add (&sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = NFNN, .value.nFnn = _ (_val) } })
+#define DO(_name, _val) symrec_add (&env->sym_table, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = NFNN, .value.nFnn = _ (_val) } })
   X;
+}
+//=============== MAIN ====================
+int
+main (void) {
+  setlocale (LC_ALL, "");
+
+  fprintf (stderr, _ ("Type Ctrl-d or '%s' to quit.\n"), _ ("exit"));
 
 #ifdef RPN_DEBUG
 #if RPN_DEBUG == 1
@@ -752,9 +778,9 @@ main (void) {
 #endif
 #endif
 
-  fprintf (stderr, _ ("Type Ctrl-d or '%s' to quit.\n"), _ ("exit"));
-
-  context env = { .sym_table = sym_table };
+  context env = { 0 };
+  RPN_init (&env);
   while (RPN_parse (&env)) // On error, restart.
     ;
+  RPN_cleanup (&env);
 }
