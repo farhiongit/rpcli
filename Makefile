@@ -1,6 +1,5 @@
 # Using GNU Make >= 4.3
 CFLAGS+=-Wall
-LDLIBS=-lm
 BFLAGS+=--language=C -Werror
 
 #RUNNER=valgrind --leak-check=full
@@ -12,12 +11,15 @@ BFLAGS+=--language=C -Werror
 all: rpcli
 	$(RUNNER) ./"$<"
 
-rpcli: rpgrammar.tab.o rpcli.o
+rpcli: LDLIBS=-lm
+rpcli: rpgrammar.tab.o rpcli.o rp_lexer.o
 
-rpcli.o: CFLAGS+=-Wno-switch-enum
 rpcli.o: rpcli.c rpgrammar.tab.h
+rp_lexer.o: rp_lexer.c rpgrammar.tab.h
 
-.INTERMEDIATE: rpgrammar.tab.c
+rpgrammar.tab.h rpgrammar.tab.c: rp_parser.c
+
+.INTERMEDIATE: rpgrammar.tab.c rpgrammar.tab.o rpcli.o rp_lexer.o
 
 # Group of multiple targets (with "&:" in GNU make 4.3 and later).
 # https://www.gnu.org/software/make/manual/html_node/Multiple-Targets.html
@@ -27,7 +29,7 @@ rpcli.o: rpcli.c rpgrammar.tab.h
 %.tab.c %.tab.h &: %.y
 	bison $(BFLAGS) --header="${@:.c=.h}" -o "${@:.h=.c}" "$<"
 
-%.tab.o: CFLAGS+=-Wno-switch-enum -Wno-unused-value
+%.tab.o: CFLAGS+=-Wno-switch-enum -Wno-switch-default -Wno-unused-value
 %.tab.o: %.tab.c
 
 

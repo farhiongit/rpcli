@@ -1,10 +1,22 @@
-// Appear near the top of the parser implementation file only, before the YYSTYPE definition
+// Appear near the top of the parser IMPLEMENTATION file only, before the YYSTYPE definition
 %code top {
   #include <stdio.h>
-  #define _(str) (str) // i18n
-}
+  #include <stdlib.h>
+  #include <errno.h>
+  #include <math.h>
+  #include <setjmp.h>
+  #include <stdarg.h>
+  #include <time.h>
+  #include <limits.h>
 
-// Required by the YYSTYPE definition in both the parser implementation file and the parser header file.
+  #define _(str) (str) // i18n
+
+  typedef jmp_buf exception;
+  #define throw_exception(exception) longjmp (exception, (__COUNTER__ + 1))
+  #define catch_exception(exception) if (setjmp (exception))
+} // %code top
+
+// Required by the YYSTYPE definition in both the parser IMPLEMENTATION file and the parser HEADER file.
 %code requires {
   #include <wchar.h>
 
@@ -21,7 +33,6 @@
       decimal decimal;
     } value;
   };
-
 
   typedef integer (*iF) (void);
   typedef integer (*iFi) (integer);
@@ -95,50 +106,38 @@
     } value;
   };
 
-  typedef struct symrec symrec;
   typedef struct context context;
-  struct context {
-    symrec *sym_table;
-    number last_x, last_res, last_ans;
-    FILE *in, *out, *err;
-  };
-}
+} // %code requires
 
 // The union YYSTYPE (or union name) definition
 %union value {
   number number;
   symbol *symbol;
   wchar_t *newvar_name;
-}
+} // %union
 
-// Prototypes inserted into both the parser header file and the parser implementation file that depend on YYSTYPE or YYLTYPE.
+// Prototypes inserted into both the parser HEADER file and the parser IMPLEMENTATION file that depend on YYSTYPE or YYLTYPE.
 // Declare functions yylex and yyerror here (needed for the definition of yyparse).
 %code provides {
-  #define RPN_STDERR (env->err ? env->err : stderr)
-  #define RPN_STDOUT (env->out ? env->out : stdout)
-  #define RPN_STDIN (env->in ? env->in : stdin)
-  int RPN_lex (RPN_STYPE *, context *context);
-  void RPN_error (context *context, char const *);
+  struct report {
+    void (*error) (const char *);
+    void (*decimal) (decimal);
+    void (*integer) (integer);
+    void (*message) (const char *format, va_list);
+  };
+  context *RPN_init (struct report r);
+  void RPN_cleanup (context *env);
 
-  void RPN_init (context *env);
-  void RPN_cleanup (context *);
+  int RPN_lex (RPN_STYPE *RPN_lval, context *env, FILE *in);
+  symbol *from_name (context *env, const wchar_t *name);
+  number from_integer (integer);
+  number from_decimal (decimal);
+} // %code provides
 
-  number RPN_add (number, number);
-  number RPN_mul (number, number);
-  number RPN_f0a (symbol *);
-  number RPN_f1a (symbol *, number);
-  number RPN_f2a (symbol *, number, number);
-
-  number RPN_set_var (symbol *symref, number val);
-  symbol *RPN_add_var (symrec **sym_table, wchar_t *name);
-
-  int RPN_print_number (number, context *);
-  void RPN_print_vars (symrec *sym_table, context *);
-}
-
-// Code needed by the parser, inserted at the beginning of the parser implementation file only, before the definition of yyparse.
+// Code needed by the parser, inserted at the beginning of the parser IMPLEMENTATION file only, BEFORE the definition of yyparse.
 %code {
-}
+  #include "rp_parser.c"  // Code included here.
+} // %code
 
 // Declarations.
 %define api.pure
@@ -146,23 +145,25 @@
 %define api.token.prefix {RPN_}
 %define api.prefix {RPN_}
 
-%param {context *env}  // Context passed to the lexer and the parser.
+%param {context *env}{FILE *input}
 
 // For debugging purpose
-%printer { RPN_print_number ($$, env); } <number>
-%printer { fprintf (RPN_STDERR, "%ls", $$->name); } <symbol>
+%printer { _rpn_printer_number ($$); } <number>
+%printer { fprintf (stderr, "%ls", $$->name); } <symbol>
 
 // Character tokens (among the ten digits, the 52 lower- and upper-case English letters, and \a\b\t\n\v\f\r !\"#%&'()*+,-./:;<=>?[\\]^_{|}~) are declared automatically.
 %token END 0 _("end of file")  // the end token (token 0) is specifically redefined.
 %token EOL _("end of line")
 %token UNRECOGNIZED _("unrecognized word")
 
-%token MEMORY
-
 %token <number> NUMBER _("number")
 %token <symbol> CONSTANT _("constant")
-%token <symbol> VARIABLE _("variable")
+%token <symbol> KNOWN_VARIABLE _("known variable")
 %token <newvar_name> NEW_VARIABLE _("new variable")
+
+%token <number> LAST_X _("last operand")
+%token <number> LAST_RESULT _("last operation")
+%token <number> LAST_ANSWER _("last result")
 
 %token <symbol> F0A _("constant function")
 %token <symbol> F1A _("unary function")
@@ -170,8 +171,11 @@
 
 %type <number> expression sum_of_expressions product_of_expressions calculation
 
+// Initialisation before parsing.
+%initial-action { (void)_rpn_printer_number; if (!env) abort (); _rpn_report_message (env, _ ("Type Ctrl-d or '%s' to quit.\n"), _ ("exit"));}
+
 // Invoked for the specifically redefined end token (token 0) when normal exit (no error).
-%destructor { fprintf (RPN_STDERR, "Bye !\n"); } END
+%destructor { _rpn_report_message (env, _ ("Bye !\n")); } END
 // Destructors directives define code that is called on error recovery when a symbol is automatically discarded.
 // Right-hand side symbols of a rule that explicitly triggers a syntax error via YYERROR are not discarded automatically.
 %destructor { free ($$); } <newvar_name>
@@ -179,73 +183,71 @@
 //%destructor {  } input;
 
 %glr-parser // Needed for sum_of_expressions and product_of_expressions to work.
-%expect 12
-%expect-rr 4
+%expect 21
+%expect-rr 7
 %start input
 %%
 // Grammar rules.
 // Always use left recursion only.
 input:
-    %empty { fprintf (RPN_STDERR, "rpn> "); }
-  | input EOL { fprintf (RPN_STDERR, "rpn> "); }
-  | input command EOL { fprintf (RPN_STDERR, "rpn> "); }
-  //| error EOL { fprintf (RPN_STDERR, "Recovering...\nrpn> "); }
+    %empty { _rpn_report_message (env, "rpn> "); }
+  | input EOL { _rpn_report_message (env, "rpn> "); }
+  | input command EOL { _rpn_report_message (env, "rpn> "); }
+  //| error EOL { yyerrok; }
   ;
 
 command:
     calculation
   | set_var
   | set_newvar
-  | statement
-  //| error
-
-statement:
-    MEMORY { RPN_print_vars (env->sym_table, env); }
   //| error
   ;
 
 set_var:
-    VARIABLE[var] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var ($var, $calculation); }
+    KNOWN_VARIABLE[var] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var ($var, $calculation); }
   //| error
   ;
 
 set_newvar:
-    NEW_VARIABLE[varname] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var (RPN_add_var (&env->sym_table, $varname), $calculation);
+    NEW_VARIABLE[varname] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var (RPN_add_var (env, $varname), $calculation);
                                             free ($varname); }
   //| error
   ;
 
 calculation:
-    sum_of_expressions '+' { env->last_ans = env->last_res = $$ = $1 ; RPN_print_number ($1, env) && fprintf (RPN_STDERR, "\n"); }
-  | product_of_expressions '*' { env->last_ans = env->last_res = $$ = $1 ; RPN_print_number ($1, env) && fprintf (RPN_STDERR, "\n"); }
-  | expression { env->last_ans = env->last_res = $$ = $1 ; RPN_print_number ($1, env) && fprintf (RPN_STDERR, "\n"); }
+    sum_of_expressions '+' { env->last_ans = env->last_res = $$ = $1 ; _rpn_report_number (env, $1); }
+  | product_of_expressions '*' { env->last_ans = env->last_res = $$ = $1 ; _rpn_report_number (env, $1); }
+  | expression { env->last_ans = env->last_res = $$ = $1 ; _rpn_report_number (env, $1); }
   //| error
   ;
 
 // Always use left recursion only.
 sum_of_expressions:
-    expression[first] expression[second] expression[third] { env->last_res = $$ = RPN_add (RPN_add ($first, $second), env->last_x = $third); }
-  | sum_of_expressions[first] expression[second] { env->last_res = $$ = RPN_add ($first, env->last_x = $second); }
+    expression[first] expression[second] expression[third] { env->last_res = $$ = _rpn_add (_rpn_add ($first, $second), env->last_x = $third); }
+  | sum_of_expressions[first] expression[second] { env->last_res = $$ = _rpn_add ($first, env->last_x = $second); }
   ;
 
 // Always use left recursion only.
 product_of_expressions:
-    expression[first] expression[second] expression[third] { env->last_res = $$ = RPN_mul (RPN_mul ($first, $second), env->last_x = $third); }
-  | product_of_expressions[first] expression[second] { env->last_res = $$ = RPN_mul ($first, env->last_x = $second); }
+    expression[first] expression[second] expression[third] { env->last_res = $$ = _rpn_mul (_rpn_mul ($first, $second), env->last_x = $third); }
+  | product_of_expressions[first] expression[second] { env->last_res = $$ = _rpn_mul ($first, env->last_x = $second); }
   ;
 
 expression:
     NUMBER { env->last_res = $$ = $1; }
-  | CONSTANT { env->last_res = $$ = RPN_f0a ($1); }
-  | VARIABLE { env->last_res = $$ = RPN_f0a ($1); }
-  | F0A { env->last_res = $$ = RPN_f0a ($1); }
-  | expression[first] F1A[function] { env->last_res = $$ = RPN_f1a ($function, env->last_x = $first); }
-  | expression[first] expression[second] F2A[function] { env->last_res = $$ = RPN_f2a ($function, $first, env->last_x = $second); }
+  | LAST_X { env->last_res = $$ = env->last_x; }
+  | LAST_RESULT { env->last_res = $$ = env->last_res; }
+  | LAST_ANSWER { env->last_res = $$ = env->last_ans; }
+  | CONSTANT { env->last_res = $$ = _rpn_f0a (env, $1); }
+  | KNOWN_VARIABLE { env->last_res = $$ = _rpn_f0a (env, $1); }
+  | F0A { env->last_res = $$ = _rpn_f0a (env, $1); }
+  | expression[first] F1A[function] { env->last_res = $$ = _rpn_f1a (env, $function, env->last_x = $first); }
+  | expression[first] expression[second] F2A[function] { env->last_res = $$ = _rpn_f2a (env, $function, $first, env->last_x = $second); }
   ;
 
 %%
 
-// Code needed by the parser, copied verbatim to the end of the parser implementation file only, after the definition of yyparse.
+// Code needed by the parser, copied verbatim to the end of the parser IMPLEMENTATION file only, AFTER the definition of yyparse.
 // Definitions of yylex and yyerror often go here.
 
-
+// Lexer in rp_lexer.c
