@@ -4,18 +4,18 @@
 #include <stdlib.h>
 
 #define _(str) (str) // i18n
-//=============== MAIN ====================
-static void
-RPN_print_integer (integer a) { printf ("= %lli [integer]\n", a); }
 
 static void
-RPN_print_decimal (decimal a) { printf ("= %Lg\n", a); }
+RPN_print_integer (integer a, void *) { printf ("= %lli [integer]\n", a); }
 
 static void
-RPN_print_error (const char *msg) { fprintf (stderr, "ERROR: %s\n", msg); }
+RPN_print_decimal (decimal a, void *) { printf ("= %Lg\n", a); }
 
 static void
-RPN_print_message (const char *format, va_list ap) { vfprintf (stderr, format, ap); }
+RPN_print_error (const char *msg, void *) { fprintf (stderr, "%s: %s.\n", _ ("ERROR"), msg); }
+
+static void
+RPN_print_message (const char *format, va_list ap, void *) { vfprintf (stderr, format, ap); }
 
 int
 main (void) {

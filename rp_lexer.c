@@ -40,12 +40,13 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, FILE *in) {
     { L"_", RPN_LAST_X },
     { L"res", RPN_LAST_RESULT },
     { L"ans", RPN_LAST_ANSWER },
+    { L"vars", RPN_MEMORY },
     { L"exit", RPN_END },
   };
 
   // keywords
   for (size_t i = 0; token < 0 && i < sizeof (words) / sizeof (*words); i++)
-    if (!wcscmp (_ (words[i].word), wcs))
+    if (!wcscmp (words[i].word, wcs))
       token = words[i].token;
 
   // integer number

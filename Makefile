@@ -29,7 +29,7 @@ rpgrammar.tab.h rpgrammar.tab.c: rp_parser.c
 %.tab.c %.tab.h &: %.y
 	bison $(BFLAGS) --header="${@:.c=.h}" -o "${@:.h=.c}" "$<"
 
-%.tab.o: CFLAGS+=-Wno-switch-enum -Wno-switch-default -Wno-unused-value
+%.tab.o: CFLAGS+=-Wno-switch-enum -Wno-switch-default
 %.tab.o: %.tab.c
 
 

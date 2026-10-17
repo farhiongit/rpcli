@@ -21,11 +21,12 @@ struct context {
 };
 
 static void
-RPN_error (context *env, FILE *, char const *msg) {
+RPN_error (context *env, FILE *in, char const *msg) {
+  (void)in;
   if (env && env->report.error)
-    env->report.error (msg);
+    env->report.error (msg, env->report.arg);
   else
-    fprintf (stderr, "ERROR: %s.\n", _ (msg));
+    fprintf (stderr, "%s: %s.\n", _ ("ERROR"), msg);
 }
 
 static void
@@ -54,13 +55,13 @@ _rpn_report_number (context *env, number n) {
   switch (n.type) {
   case INTEGER:
     if (env->report.integer)
-      env->report.integer (n.value.integer);
+      env->report.integer (n.value.integer, env->report.arg);
     else
       fprintf (stderr, "%lli\n", n.value.integer);
     break;
   case DECIMAL:
     if (env->report.decimal)
-      env->report.decimal (n.value.decimal);
+      env->report.decimal (n.value.decimal, env->report.arg);
     else
       fprintf (stderr, "%Lg\n", n.value.decimal);
     break;
@@ -74,7 +75,7 @@ _rpn_report_message (context *env, const char *restrict format, ...) {
   if (env->report.message) {
     va_list ap;
     va_start (ap, format);
-    env->report.message (format, ap);
+    env->report.message (format, ap, env->report.arg);
     va_end (ap);
   }
 }
@@ -84,7 +85,7 @@ symrec_add (context *env, symbol element) {
   symrec *symref = malloc (sizeof (*symref));
   if (!symref || !(element.name = wcsdup (element.name))) {
     errno = ENOMEM;
-    _rpn_report_error (env, "memory allocation error");
+    _rpn_report_error (env, _ ("memory allocation error"));
     return 0;
   } else {
     symref->symbol = element;
@@ -95,7 +96,7 @@ symrec_add (context *env, symbol element) {
 }
 
 static symbol *
-symrec_add_var (context *env, wchar_t *name) {
+RPN_add_var (context *env, wchar_t *name) {
   return symrec_add (env, (symbol){ .name = name,
                                     .type = VARIABLE,
                                     .value.number = UNDEFINED_VALUE });
@@ -109,8 +110,14 @@ RPN_set_var (symbol *symref, number val) {
   return symref->value.number;
 }
 
-static symbol *
-RPN_add_var (context *env, wchar_t *name) { return symrec_add_var (env, name); }
+static void
+RPN_print_vars (context *env) {
+  for (symrec *s = env->sym_table; s; s = s->next)
+    if (s->symbol.type == VARIABLE) {
+      _rpn_report_message (env, "%ls ", s->symbol.name);
+      _rpn_report_number (env, s->symbol.value.number);
+    }
+}
 
 static decimal
 to_decimal (number a) {
@@ -182,25 +189,25 @@ static number
 _rpn_f0a (context *env, symbol *symref) {
   catch_exception (conversion_error) {
     errno = EPERM;
-    _rpn_report_error (env, "type mismatch");
+    _rpn_report_error (env, _ ("type mismatch"));
     return UNDEFINED_VALUE;
   }
 
   catch_exception (out_of_range_error) {
     errno = EPERM;
-    _rpn_report_error (env, "out of range");
+    _rpn_report_error (env, _ ("out of range"));
     return UNDEFINED_VALUE;
   }
 
   catch_exception (div_by_zero_error) {
     errno = EPERM;
-    _rpn_report_error (env, "division by zero");
+    _rpn_report_error (env, _ ("division by zero"));
     return UNDEFINED_VALUE;
   }
 
   catch_exception (unknown_variable_error) {
     errno = EPERM;
-    _rpn_report_error (env, "unknown variable");
+    _rpn_report_error (env, _ ("unknown variable"));
     return UNDEFINED_VALUE;
   }
 
@@ -226,7 +233,8 @@ _rpn_f0a (context *env, symbol *symref) {
     if (!errno) {
       errno = saveerrno;
       return ret;
-    }
+    } else
+      throw_exception (out_of_range_error);
   } else if (s.value.number.type != UNDEFINED)
     return s.value.number;
   else
@@ -240,19 +248,19 @@ static number
 _rpn_f1a (context *env, symbol *symref, number a) {
   catch_exception (conversion_error) {
     errno = EPERM;
-    _rpn_report_error (env, "type mismatch");
+    _rpn_report_error (env, _ ("type mismatch"));
     return UNDEFINED_VALUE;
   }
 
   catch_exception (out_of_range_error) {
     errno = EPERM;
-    _rpn_report_error (env, "out of range");
+    _rpn_report_error (env, _ ("out of range"));
     return UNDEFINED_VALUE;
   }
 
   catch_exception (div_by_zero_error) {
     errno = EPERM;
-    _rpn_report_error (env, "division by zero");
+    _rpn_report_error (env, _ ("division by zero"));
     return UNDEFINED_VALUE;
   }
 
@@ -284,7 +292,8 @@ _rpn_f1a (context *env, symbol *symref, number a) {
     if (!errno) {
       errno = saveerrno;
       return ret;
-    }
+    } else
+      throw_exception (out_of_range_error);
   }
 
   /* error handling */
@@ -295,19 +304,19 @@ static number
 _rpn_f2a (context *env, symbol *symref, number a, number b) {
   catch_exception (conversion_error) {
     errno = EPERM;
-    _rpn_report_error (env, "type mismatch");
+    _rpn_report_error (env, _ ("type mismatch"));
     return UNDEFINED_VALUE;
   }
 
   catch_exception (out_of_range_error) {
     errno = EPERM;
-    _rpn_report_error (env, "out of range");
+    _rpn_report_error (env, _ ("out of range"));
     return UNDEFINED_VALUE;
   }
 
   catch_exception (div_by_zero_error) {
     errno = EPERM;
-    _rpn_report_error (env, "division by zero");
+    _rpn_report_error (env, _ ("division by zero"));
     return UNDEFINED_VALUE;
   }
 
@@ -359,7 +368,8 @@ _rpn_f2a (context *env, symbol *symref, number a, number b) {
     if (!errno) {
       errno = saveerrno;
       return ret;
-    }
+    } else
+      throw_exception (out_of_range_error);
   }
 
   /* error handling */
@@ -525,7 +535,7 @@ _rpn_init (void) {
   context *env = calloc (1, sizeof (*env));
   if (!env) {
     errno = ENOMEM;
-    fprintf (stderr, _ ("ERROR: %s.\n"), _ ("No more memory"));
+    _rpn_report_error (0, _ ("memory allocation error"));
     return 0;
   }
 
@@ -536,7 +546,7 @@ _rpn_init (void) {
   DO (L"e", expl (1)); \
   DO (L"pi", acos (-1));
 #undef DO
-#define DO(_name, _val) symrec_add (env, (symbol){ .name = _name, .type = CONSTANT, .value.number = (number){ .type = DECIMAL, .value.decimal = _ (_val) } })
+#define DO(_name, _val) symrec_add (env, (symbol){ .name = (_name), .type = CONSTANT, .value.number = (number){ .type = DECIMAL, .value.decimal = (_val) } })
   X;
 
 #undef X
@@ -559,14 +569,14 @@ _rpn_init (void) {
   DO (L"sqrt", sqrtl);   \
   DO (L"inv", _rpn_inverse);
 #undef DO
-#define DO(_name, _val) symrec_add (env, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = DFD, .value.dFd = _ (_val) } })
+#define DO(_name, _val) symrec_add (env, (symbol){ .name = (_name), .type = FUNCTION, .value.function = (function){ .type = DFD, .value.dFd = (_val) } })
   X;
 
 #undef X
 #define X \
   DO (L"rand", _rpn_random);
 #undef DO
-#define DO(_name, _val) symrec_add (env, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = DF, .value.dF = _ (_val) } })
+#define DO(_name, _val) symrec_add (env, (symbol){ .name = (_name), .type = FUNCTION, .value.function = (function){ .type = DF, .value.dF = (_val) } })
   X;
 
 #undef X
@@ -575,7 +585,7 @@ _rpn_init (void) {
   DO (L"ceil", _rpn_ceil); \
   DO (L"floor", _rpn_floor);
 #undef DO
-#define DO(_name, _val) symrec_add (env, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFD, .value.iFd = _ (_val) } })
+#define DO(_name, _val) symrec_add (env, (symbol){ .name = (_name), .type = FUNCTION, .value.function = (function){ .type = IFD, .value.iFd = (_val) } })
   X;
 
 #undef X
@@ -583,7 +593,7 @@ _rpn_init (void) {
   DO (L"~", _rpn_compl); \
   DO (L"!", _rpn_fact);
 #undef DO
-#define DO(_name, _val) symrec_add (env, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFI, .value.iFi = _ (_val) } })
+#define DO(_name, _val) symrec_add (env, (symbol){ .name = (_name), .type = FUNCTION, .value.function = (function){ .type = IFI, .value.iFi = (_val) } })
   X;
 
 #undef X
@@ -592,7 +602,7 @@ _rpn_init (void) {
   DO (L"sqr", _rpn_sqr); \
   DO (L"neg", _rpn_opposite);
 #undef DO
-#define DO(_name, _val) symrec_add (env, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = NFN, .value.nFn = _ (_val) } })
+#define DO(_name, _val) symrec_add (env, (symbol){ .name = (_name), .type = FUNCTION, .value.function = (function){ .type = NFN, .value.nFn = (_val) } })
   X;
 
 #undef X
@@ -603,7 +613,7 @@ _rpn_init (void) {
   DO (L"&", _rpn_and);       \
   DO (L"^", _rpn_xor);
 #undef DO
-#define DO(_name, _val) symrec_add (env, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = IFII, .value.iFii = _ (_val) } })
+#define DO(_name, _val) symrec_add (env, (symbol){ .name = (_name), .type = FUNCTION, .value.function = (function){ .type = IFII, .value.iFii = (_val) } })
   X;
 
 #undef X
@@ -612,9 +622,9 @@ _rpn_init (void) {
   DO (L"-", _rpn_sub); \
   DO (L"*", _rpn_mul); \
   DO (L"/", _rpn_div); \
-  DO (L"**", _rpn_pow);
+  DO (L"pow", _rpn_pow);
 #undef DO
-#define DO(_name, _val) symrec_add (env, (symbol){ .name = _name, .type = FUNCTION, .value.function = (function){ .type = NFNN, .value.nFnn = _ (_val) } })
+#define DO(_name, _val) symrec_add (env, (symbol){ .name = (_name), .type = FUNCTION, .value.function = (function){ .type = NFNN, .value.nFnn = (_val) } })
   X;
 
   return env;

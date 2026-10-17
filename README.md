@@ -33,7 +33,7 @@ Line | Result | Comment
 `a = 9 10 / inv exp` | `a = 3.03773` | A user-defined variable `a`.
 `-1.7e3 a * sin` | `0.592614` | `a` is reused.
 `100 log` | `2` | Conversion to decimal.
-`e ans 1 + ** ln` | `3` | `ans` is equal to the previous result `2`, `e` is a predefined constant.
+`e ans 1 + pow ln` | `3` | `ans` is equal to the previous result `2`, `e` is a predefined constant.
 `2 sqrt ceil neg` | `-2 [integer]` | Conversion to integer.
 `10 sqrt round` | `3 [integer]` | Conversion to integer.
 `r = 1e6 rand * floor` | `r = 129474 [integer]` | `r` is defined as a random integer in [ 0 ; 1000000 [.
@@ -126,7 +126,7 @@ Word | Description
 `-` | Substraction
 `*` | Product
 `/` | Division
-`**` | Power of
+`pow` | Power of
 
 ### Binary functions on integers
 

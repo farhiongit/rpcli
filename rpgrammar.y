@@ -120,10 +120,11 @@
 // Declare functions yylex and yyerror here (needed for the definition of yyparse).
 %code provides {
   struct report {
-    void (*error) (const char *);
-    void (*decimal) (decimal);
-    void (*integer) (integer);
-    void (*message) (const char *format, va_list);
+    void (*error) (const char *, void *);
+    void (*decimal) (decimal, void *);
+    void (*integer) (integer, void *);
+    void (*message) (const char *format, va_list, void *);
+    void *arg;
   };
   context *RPN_init (struct report r);
   void RPN_cleanup (context *env);
@@ -169,10 +170,12 @@
 %token <symbol> F1A _("unary function")
 %token <symbol> F2A _("binary function")
 
+%token MEMORY
+
 %type <number> expression sum_of_expressions product_of_expressions calculation
 
 // Initialisation before parsing.
-%initial-action { (void)_rpn_printer_number; if (!env) abort (); _rpn_report_message (env, _ ("Type Ctrl-d or '%s' to quit.\n"), _ ("exit"));}
+%initial-action { (void)_rpn_printer_number; if (!env) abort (); _rpn_report_message (env, _ ("Type Ctrl-d or '%s' to quit.\n"), "exit");}
 
 // Invoked for the specifically redefined end token (token 0) when normal exit (no error).
 %destructor { _rpn_report_message (env, _ ("Bye !\n")); } END
@@ -200,7 +203,12 @@ command:
     calculation
   | set_var
   | set_newvar
+  | statement
   //| error
+  ;
+
+statement:
+    MEMORY { RPN_print_vars(env); }
   ;
 
 set_var:
