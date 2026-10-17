@@ -90,5 +90,6 @@ struct symbol {
 };
 
 typedef struct context context;
+typedef union value RPN_STYPE;
 
 #endif

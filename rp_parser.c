@@ -1,3 +1,19 @@
+#include "rp_parser.h"
+#include <errno.h>
+#include <limits.h>
+#include <math.h>
+#include <setjmp.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+
+#define _(str) (str) // i18n
+
+typedef jmp_buf exception;
+#define throw_exception(exception) longjmp (exception, (__COUNTER__ + 1))
+#define catch_exception(exception) if (setjmp (exception))
+
 //=============== FOR THE PARSER ====================
 #define UNDEFINED_VALUE ((struct number){ .type = UNDEFINED })
 #define INTEGER_MAX LLONG_MAX

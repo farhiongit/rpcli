@@ -1,19 +1,5 @@
 // Appear near the top of the parser IMPLEMENTATION file only, before the YYSTYPE definition
 %code top {
-  #include <stdio.h>
-  #include <stdlib.h>
-  #include <errno.h>
-  #include <math.h>
-  #include <setjmp.h>
-  #include <stdarg.h>
-  #include <time.h>
-  #include <limits.h>
-
-  #define _(str) (str) // i18n
-
-  typedef jmp_buf exception;
-  #define throw_exception(exception) longjmp (exception, (__COUNTER__ + 1))
-  #define catch_exception(exception) if (setjmp (exception))
 } // %code top
 
 // Required by the YYSTYPE definition in both the parser IMPLEMENTATION file and the parser HEADER file.
