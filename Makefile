@@ -14,10 +14,11 @@ all: rpcli
 rpcli: LDLIBS=-lm
 rpcli: rpgrammar.tab.o rpcli.o rp_lexer.o
 
-rpcli.o: rpcli.c rpgrammar.tab.h
-rp_lexer.o: rp_lexer.c rpgrammar.tab.h
+rpcli.o: rpcli.c rpgrammar.tab.h rp_types.h rp_parser.h
+rp_lexer.o: rp_lexer.c rpgrammar.tab.h rp_types.h rp_parser.h
+rp_parser.o: rp_parser.c
 
-rpgrammar.tab.h rpgrammar.tab.c: rp_parser.c
+rpgrammar.tab.h rpgrammar.tab.c: rp_types.h rp_parser.c
 
 .INTERMEDIATE: rpgrammar.tab.c rpgrammar.tab.o rpcli.o rp_lexer.o
 

@@ -1,6 +1,7 @@
 #include "rpgrammar.tab.h"
 #include <errno.h>
 #include <stdlib.h>
+#include <wchar.h>
 #include <wctype.h>
 
 #define _(str) (str) // i18n

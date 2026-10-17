@@ -18,95 +18,7 @@
 
 // Required by the YYSTYPE definition in both the parser IMPLEMENTATION file and the parser HEADER file.
 %code requires {
-  #include <wchar.h>
-
-  typedef long long int integer;
-  typedef long double decimal;
-  typedef struct number number;
-  struct number {
-    enum { UNDEFINED = 0,
-           INTEGER,
-           DECIMAL,
-    } type;
-    union {
-      integer integer;
-      decimal decimal;
-    } value;
-  };
-
-  typedef integer (*iF) (void);
-  typedef integer (*iFi) (integer);
-  typedef integer (*iFd) (decimal);
-  typedef integer (*iFii) (integer, integer);
-  typedef integer (*iFid) (integer, decimal);
-  typedef integer (*iFdi) (decimal, integer);
-  typedef integer (*iFdd) (decimal, decimal);
-  typedef decimal (*dF) (void);
-  typedef decimal (*dFi) (integer);
-  typedef decimal (*dFd) (decimal);
-  typedef decimal (*dFii) (integer, integer);
-  typedef decimal (*dFid) (integer, decimal);
-  typedef decimal (*dFdi) (decimal, integer);
-  typedef decimal (*dFdd) (decimal, decimal);
-  typedef number (*nF) (void);
-  typedef number (*nFn) (number);
-  typedef number (*nFnn) (number, number);
-
-  typedef struct function function;
-  struct function {
-    enum { IF,
-           DF,
-           IFI,
-           DFI,
-           IFD,
-           DFD,
-           IFII,
-           IFID,
-           IFDI,
-           IFDD,
-           DFII,
-           DFID,
-           DFDI,
-           DFDD,
-           NF,
-           NFN,
-           NFNN,
-    } type;
-    union {
-      iF iF;
-      iFi iFi;
-      iFd iFd;
-      iFii iFii;
-      iFid iFid;
-      iFdi iFdi;
-      iFdd iFdd;
-      dF dF;
-      dFi dFi;
-      dFd dFd;
-      dFii dFii;
-      dFid dFid;
-      dFdi dFdi;
-      dFdd dFdd;
-      nF nF;
-      nFn nFn;
-      nFnn nFnn;
-    } value;
-  };
-
-  typedef struct symbol symbol;
-  struct symbol {
-    wchar_t *name;
-    enum { FUNCTION,
-           VARIABLE,
-           CONSTANT,
-    } type;
-    union {
-      function function; // for FUNCTION
-      number number;     // for CONSTANT and VARIABLE
-    } value;
-  };
-
-  typedef struct context context;
+  #include "rp_types.h"
 } // %code requires
 
 // The union YYSTYPE (or union name) definition
@@ -119,20 +31,7 @@
 // Prototypes inserted into both the parser HEADER file and the parser IMPLEMENTATION file that depend on YYSTYPE or YYLTYPE.
 // Declare functions yylex and yyerror here (needed for the definition of yyparse).
 %code provides {
-  struct report {
-    void (*error) (const char *, void *);
-    void (*decimal) (decimal, void *);
-    void (*integer) (integer, void *);
-    void (*message) (const char *format, va_list, void *);
-    void *arg;
-  };
-  context *RPN_init (struct report r);
-  void RPN_cleanup (context *env);
-
-  int RPN_lex (RPN_STYPE *RPN_lval, context *env, FILE *in);
-  symbol *from_name (context *env, const wchar_t *name);
-  number from_integer (integer);
-  number from_decimal (decimal);
+  #include "rp_parser.h"
 } // %code provides
 
 // Code needed by the parser, inserted at the beginning of the parser IMPLEMENTATION file only, BEFORE the definition of yyparse.
