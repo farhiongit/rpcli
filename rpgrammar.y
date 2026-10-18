@@ -116,14 +116,14 @@ calculation:
 
 // Always use left recursion only.
 sum_of_expressions:
-    expression[first] expression[second] expression[third] { env->last_res = $$ = _rpn_add (_rpn_add ($first, $second), env->last_x = $third); }
-  | sum_of_expressions[first] expression[second] { env->last_res = $$ = _rpn_add ($first, env->last_x = $second); }
+    expression[first] expression[second] expression[third] { env->last_res = $$ = RPN_add (env, RPN_add (env, $first, $second), env->last_x = $third); }
+  | sum_of_expressions[first] expression[second] { env->last_res = $$ = RPN_add (env, $first, env->last_x = $second); }
   ;
 
 // Always use left recursion only.
 product_of_expressions:
-    expression[first] expression[second] expression[third] { env->last_res = $$ = _rpn_mul (_rpn_mul ($first, $second), env->last_x = $third); }
-  | product_of_expressions[first] expression[second] { env->last_res = $$ = _rpn_mul ($first, env->last_x = $second); }
+    expression[first] expression[second] expression[third] { env->last_res = $$ = RPN_mul (env, RPN_mul (env, $first, $second), env->last_x = $third); }
+  | product_of_expressions[first] expression[second] { env->last_res = $$ = RPN_mul (env, $first, env->last_x = $second); }
   ;
 
 expression:

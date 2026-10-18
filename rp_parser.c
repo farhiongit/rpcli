@@ -4,6 +4,7 @@
 #include <math.h>
 #include <setjmp.h>
 #include <stdarg.h>
+#include <stdckdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -163,6 +164,9 @@ to_integer (number a) {
     return a.value.integer;
     break;
   case DECIMAL:
+    if (iszero (a.value.decimal - llroundl (a.value.decimal)))
+      return llroundl (a.value.decimal);
+    break;
   case UNDEFINED:
   default:
     break;
@@ -177,28 +181,62 @@ to_integer (number a) {
 
 static number
 _rpn_add (number a, number b) {
-  catch_exception (conversion_error) {
-    errno = EPERM;
-    return UNDEFINED_VALUE;
+  if (a.type == INTEGER && b.type == INTEGER) {
+    integer result;
+    if (!ckd_add (&result, to_integer (a), to_integer (b)))
+      return from_integer (result);
+    else
+      throw_exception (out_of_range_error);
   }
-
-  if (a.type == INTEGER && b.type == INTEGER)
-    return from_integer (to_integer (a) + to_integer (b));
 
   return from_decimal (to_decimal (a) + to_decimal (b));
 }
 
 static number
-_rpn_mul (number a, number b) {
+RPN_add (context *env, number a, number b) {
   catch_exception (conversion_error) {
     errno = EPERM;
+    _rpn_report_error (env, _ ("type mismatch"));
     return UNDEFINED_VALUE;
   }
 
-  if (a.type == INTEGER && b.type == INTEGER)
-    return from_integer (to_integer (a) * to_integer (b));
+  catch_exception (out_of_range_error) {
+    errno = EPERM;
+    _rpn_report_error (env, _ ("out of range"));
+    return UNDEFINED_VALUE;
+  }
+
+  return _rpn_add (a, b);
+}
+
+static number
+_rpn_mul (number a, number b) {
+  if (a.type == INTEGER && b.type == INTEGER) {
+    integer result;
+    if (!ckd_mul (&result, to_integer (a), to_integer (b)))
+      return from_integer (result);
+    else
+      throw_exception (out_of_range_error);
+  }
 
   return from_decimal (to_decimal (a) * to_decimal (b));
+}
+
+static number
+RPN_mul (context *env, number a, number b) {
+  catch_exception (conversion_error) {
+    errno = EPERM;
+    _rpn_report_error (env, _ ("type mismatch"));
+    return UNDEFINED_VALUE;
+  }
+
+  catch_exception (out_of_range_error) {
+    errno = EPERM;
+    _rpn_report_error (env, _ ("out of range"));
+    return UNDEFINED_VALUE;
+  }
+
+  return _rpn_mul (a, b);
 }
 
 static number
@@ -435,8 +473,13 @@ _rpn_random (void) {
 
 static number
 _rpn_sub (number a, number b) {
-  if (a.type == INTEGER && b.type == INTEGER)
-    return from_integer (to_integer (a) - to_integer (b));
+  if (a.type == INTEGER && b.type == INTEGER) {
+    integer result;
+    if (!ckd_sub (&result, to_integer (a), to_integer (b)))
+      return from_integer (result);
+    else
+      throw_exception (out_of_range_error);
+  }
 
   return from_decimal (to_decimal (a) - to_decimal (b));
 }
@@ -460,15 +503,18 @@ _rpn_quotient (integer a, integer b) {
   return 0;
 }
 
-static integer
-_rpn_mod (integer a, integer b) {
-  if (b)
-    return a % b;
+static number
+_rpn_mod (number a, number b) {
+  if (a.type == INTEGER && to_integer (b) == 0)
+    throw_exception (div_by_zero_error);
 
-  throw_exception (div_by_zero_error);
+  if (a.type == INTEGER && b.type == INTEGER)
+    return from_integer (to_integer (a) % to_integer (b));
+  else
+    return from_decimal (fmodl (to_decimal (a), to_decimal (b)));
 
   errno = EPERM;
-  return 0;
+  return UNDEFINED_VALUE;
 }
 
 static number
@@ -624,7 +670,6 @@ _rpn_init (void) {
 #undef X
 #define X                    \
   DO (L"//", _rpn_quotient); \
-  DO (L"%", _rpn_mod);       \
   DO (L"|", _rpn_or);        \
   DO (L"&", _rpn_and);       \
   DO (L"^", _rpn_xor);
@@ -638,6 +683,7 @@ _rpn_init (void) {
   DO (L"-", _rpn_sub); \
   DO (L"*", _rpn_mul); \
   DO (L"/", _rpn_div); \
+  DO (L"%", _rpn_mod); \
   DO (L"pow", _rpn_pow);
 #undef DO
 #define DO(_name, _val) symrec_add (env, (symbol){ .name = (_name), .type = FUNCTION, .value.function = (function){ .type = NFNN, .value.nFnn = (_val) } })

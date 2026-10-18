@@ -22,18 +22,19 @@ Some examples of command lines.
 Line | Result | Comment
 --|--|--
 `2 3 *` | `6 [integer]` | RPN is a postfix calculator (applying the operator to the previous arguments).
-`2.2e2 -810 +` | `-590` | Conversion to decimal.
+`2.22e1 -800 +` | `-777.8` | `-800` is converted to decimal.
 `1 2 + 7 * 5 //` | `4 [integer]` | Several postfix operations in a row.
 `2 7 / sqr pi *` | `0.256457` | Intermediate results are stacked (`2` and `7`, then `2 7 /`, then `2 7 / sqr` and `pi`).
 `pi neg cos` | `-1` | `pi` is a predefined constant.
 `11 1 2 + % _ ^` | `1 [integer]` | `_` equals to the last argument of the previous operation `%`, `1 2 +`.
 `ans neg` | `-1 [integer]` | `ans` equals to the last result (`1`).
+`10.6 4 %` | `2.6` | The modulo function can apply to integers and decimals as well.
 `1 2 3 *` | `6 [integer]` | `*` at the end applies to the previous three arguments.
 `1 2 3 2 2 * +` | `10 [integer]` | `+` at the end applies to the previous four arguments `1`, `2`, `3` and `2 2 *`.
 `a = 9 10 / inv exp` | `a = 3.03773` | A user-defined variable `a`.
 `-1.7e3 a * sin` | `0.592614` | `a` is reused.
-`100 log` | `2` | Conversion to decimal.
-`e ans 1 + pow ln` | `3` | `ans` is equal to the previous result `2`, `e` is a predefined constant.
+`200 log` | `2.30103` | `200` is converted to decimal.
+`e ans 1 + pow ln` | `3.30103` | `ans` is equal to the previous result `2.30103`, `e` is a predefined constant.
 `2 sqrt ceil neg` | `-2 [integer]` | Conversion to integer.
 `10 sqrt round` | `3 [integer]` | Conversion to integer.
 `r = 1e6 rand * floor` | `r = 129474 [integer]` | `r` is defined as a random integer in [ 0 ; 1000000 [.
@@ -45,7 +46,7 @@ Line | Result | Comment
 `6 3 + 2 _ * -` | `3 [integer]` | `_` equals `3`, the last operand of the previous operation `6 3 +`.
 `6 3 + 2 ans * -` | `-1 [integer]` | `ans` equals `5`, the result of the calculation of the last command line.
 `vars` | `r = 129474 ...` | List all constants and user-defined variables.
-`exit` | `Good bye!` | Quit.
+`exit` | `Bye!` | Quit.
 
 
 ## Commands
@@ -126,6 +127,7 @@ Word | Description
 `-` | Substraction
 `*` | Product
 `/` | Division
+`%` | Modulo
 `pow` | Power of
 
 ### Binary functions on integers
@@ -133,7 +135,6 @@ Word | Description
 Word | Description
 --|--
 `//` | Quotient
-`%` | Modulo
 `&` | And
 `\|` | Or
 `^` | Xor
