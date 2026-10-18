@@ -6,7 +6,7 @@
 #define _(str) (str) // i18n
 
 static void
-RPN_print_integer (integer a, void *) { printf ("= %lli [integer]\n", a); }
+RPN_print_integer (integer a, void *) { printf ("= %lli [%s]\n", a, _ ("integer")); }
 
 static void
 RPN_print_decimal (decimal a, void *) { printf ("= %Lg\n", a); }
