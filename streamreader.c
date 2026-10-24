@@ -127,9 +127,15 @@ create_file_reader (FILE *f) {
 }
 
 // --- IMPLEMENTATION 2: Lecture depuis une Chaîne en Mémoire ---
+struct StringReaderCtx {
+  wchar_t *str;
+  size_t cursor;
+  int free_after_use;
+};
+
 static wint_t
 string_read_adapter (void *instance) {
-  StringReaderCtx *ctx = (StringReaderCtx *)instance;
+  struct StringReaderCtx *ctx = instance;
   wchar_t c = ctx->str[ctx->cursor];
   if (c == '\0')
     return WEOF; // Fin de chaîne
@@ -137,9 +143,19 @@ string_read_adapter (void *instance) {
   return (wint_t)c;
 }
 
+static void
+string_free_adapter (void *instance) {
+  struct StringReaderCtx *ctx = instance;
+  if (ctx->free_after_use)
+    free (ctx->str);
+  free (ctx);
+}
+
 Reader
-create_string_reader (StringReaderCtx *ctx, wchar_t *source_str) {
+create_string_reader (wchar_t *source_str, int free_after_use) {
+  struct StringReaderCtx *ctx = malloc (sizeof (*ctx));
   ctx->str = source_str;
+  ctx->free_after_use = free_after_use;
   ctx->cursor = 0;
-  return (Reader){ .instance = ctx, .read_fn = string_read_adapter, .free_fn = 0 };
+  return (Reader){ .instance = ctx, .read_fn = string_read_adapter, .free_fn = string_free_adapter };
 }

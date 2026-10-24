@@ -7,20 +7,14 @@
 
 #define _(str) (str) // i18n
 
-// Test with: ccurl -v --data-raw $'11 50 +\n' http://127.0.0.1:8000/api/rpn
+// Test with: curl -v --data-raw $'11 50 +\n' http://127.0.0.1:8000/api/rpn
 
 // fmemopen can't be used to read wide-characters.
 // The stream returned by fmemopen() is byte-oriented and cannot be changed to wide-character oriented.
 // See https://stackoverflow.com/questions/45624195/read-wide-char-from-a-stream-created-with-fmemopen
 // Therefore, we use a generic input stream.
-static void
-free_ctx (void *instance) {
-  StringReaderCtx *ctx = instance;
-  free (ctx->str);
-}
-
 static Reader
-create_mongoose_reader (StringReaderCtx *ctx, const struct mg_str source_str) {
+create_mongoose_reader (const struct mg_str source_str) {
   if (!source_str.buf || !source_str.len)
     return (Reader){ 0 };
   char *str = 0;
@@ -39,8 +33,7 @@ create_mongoose_reader (StringReaderCtx *ctx, const struct mg_str source_str) {
   assert (wcs);
   assert (nbwc == mbstowcs (wcs, str, nbwc + 1));
   free (str);
-  Reader r = create_string_reader (ctx, wcs);
-  r.free_fn = free_ctx;
+  Reader r = create_string_reader (wcs, 1 /* wcs will be free'd after use when stream_destroy is called (which calls r.free_fn on r.instance).*/);
   return r;
 }
 
@@ -82,8 +75,7 @@ http_ev_handler (struct mg_connection *c, int ev, void *ev_data) {
       char result[200] = { 0 };
       context *env = RPN_init ((struct report){ .integer = RPN_print_integer, .decimal = RPN_print_decimal, .error = RPN_print_error, .message = RPN_print_message, .arg = result });
       assert (env);
-      StringReaderCtx ctx;
-      Reader base_reader = create_mongoose_reader (&ctx, hm->body);
+      Reader base_reader = create_mongoose_reader (hm->body);
       StreamReader *stream = stream_create (base_reader);
       assert (stream);
       RPN_parse (env, stream);

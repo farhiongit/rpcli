@@ -31,13 +31,9 @@ wint_t stream_look_ahead (StreamReader *stream, size_t n);
 wint_t stream_get (StreamReader *stream);
 
 // Helper: create from a FILE
-Reader create_file_reader (FILE *f);
+Reader create_file_reader (FILE *f); // f is the instance of the returned reader.
 
 // Helper: create from a string
-typedef struct {
-  wchar_t *str;
-  size_t cursor;
-} StringReaderCtx;
-
-Reader create_string_reader (StringReaderCtx *ctx, wchar_t *source_str);
+Reader create_string_reader (wchar_t *source_str, int free_after_use);
+void free_string_reader (Reader); // Will call (if free_after_use was set) free on source_str.
 #endif
