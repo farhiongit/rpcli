@@ -1,4 +1,6 @@
+#undef NDEBUG
 #include "rpgrammar.tab.h"
+#include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <wchar.h>
@@ -8,28 +10,27 @@
 
 //=============== LEXER ====================
 int
-RPN_lex (RPN_STYPE *RPN_lval, context *env, FILE *in) {
+RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
   wint_t c;
-  while (iswblank (c = fgetwc (in))) // a space or a tab
-    continue;
+  while (iswblank (c = stream_look_ahead (in, 1))) // a space or a tab
+    assert (c == stream_get (in));
 
-  if (iswspace (c)) // but not blank -> '\n', '\r', '\v', '\f'
+  if (iswspace (c = stream_look_ahead (in, 1))) { // but not blank -> '\n', '\r', '\v', '\f'
+    assert (c == stream_get (in));
     return RPN_EOL;
+  }
   if (c == WEOF)
     return RPN_END;
 
-  ungetwc (c, in);
   wchar_t *wcs = malloc (sizeof (*wcs));
-  *wcs = L'\0';
+  wcs[0] = L'\0';
   size_t length = 0;
-  while (!iswspace (c = fgetwc (in)) && c != WEOF) // any character can be part of a word
-  {
-    length++;
-    wcs = realloc (wcs, (length + 1) * sizeof (*wcs));
-    wcs[length - 1] = (wchar_t)c;
+  while (!iswspace (c = stream_look_ahead (in, 1)) && c != WEOF) { // any character can be part of a word
+    assert (c == stream_get (in));
+    wcs[length] = (wchar_t)c;
+    wcs = realloc (wcs, (++length + 1) * sizeof (*wcs));
     wcs[length] = L'\0';
   }
-  ungetwc (c, in);
 
   int token = -1;
 

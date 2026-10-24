@@ -13,7 +13,7 @@ struct report {
 context *RPN_init (struct report r);
 void RPN_cleanup (context *env);
 
-int RPN_lex (RPN_STYPE *RPN_lval, context *env, FILE *in);
+int RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in);
 symbol *from_name (context *env, const wchar_t *name);
 number from_integer (integer);
 number from_decimal (decimal);

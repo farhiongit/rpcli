@@ -38,7 +38,7 @@ struct context {
 };
 
 static void
-RPN_error (context *env, FILE *in, char const *msg) {
+RPN_error (context *env, StreamReader *in, char const *msg) {
   (void)in;
   if (env && env->report.error)
     env->report.error (msg, env->report.arg);

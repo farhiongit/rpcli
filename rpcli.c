@@ -28,7 +28,9 @@ main (void) {
 #endif
 
   context *env = RPN_init ((struct report){ .integer = RPN_print_integer, .decimal = RPN_print_decimal, .error = RPN_print_error, .message = RPN_print_message });
-  while (RPN_parse (env, stdin)) // On error, restart.
+  StreamReader *reader = stream_create (create_file_reader (stdin));
+  while (RPN_parse (env, reader)) // On error, restart.
     ;
+  stream_destroy (reader);
   RPN_cleanup (env);
 }
