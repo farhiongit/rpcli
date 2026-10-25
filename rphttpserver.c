@@ -1,7 +1,7 @@
 #undef NDEBUG
 #include "mongoose.h"
 #include "rpgrammar.tab.h"
-#include "streamreader.h"
+#include "wcs_reader_adapter.h"
 #include <assert.h>
 #include <locale.h>
 
@@ -33,7 +33,7 @@ create_mongoose_reader (const struct mg_str source_str) {
   assert (wcs);
   assert (nbwc == mbstowcs (wcs, str, nbwc + 1));
   free (str);
-  Reader r = create_string_reader (wcs, 1 /* wcs will be free'd after use when stream_destroy is called (which calls r.free_fn on r.instance).*/);
+  Reader r = create_wcs_reader (wcs, 1 /* wcs will be free'd after use when stream_destroy is called (which calls r.free_fn on r.instance).*/);
   return r;
 }
 

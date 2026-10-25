@@ -1,6 +1,7 @@
 #undef NDEBUG
 #include "streamreader.h"
 #include <assert.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +11,7 @@ static const size_t INITIAL_CAPACITY = 1;
 
 struct StreamReader {
   Reader reader;   // L'interface de lecture générique
-  wchar_t *buffer; // Tampon circulaire
+  SR_TYPE *buffer; // Tampon circulaire
   size_t capacity;
   size_t head;
   size_t tail;
@@ -78,84 +79,38 @@ stream_fill (StreamReader *stream, size_t need_distance) {
     // Appel à l'interface générique (au lieu de fgetwc)
     if (!stream->reader.read_fn || !stream->reader.instance)
       return (errno = ENODATA), false;
-    wint_t c = stream->reader.read_fn (stream->reader.instance);
-    if (c == WEOF) {
+    SR_TYPE c = stream->reader.read_fn (stream->reader.instance);
+    if (c == SR_EOF) {
       stream->is_eof = true;
       break;
     }
 
     assert (stream->size < stream->capacity);
-    stream->buffer[stream->tail] = (wchar_t)c;
+    stream->buffer[stream->tail] = c;
     stream->tail = (stream->tail + 1) % stream->capacity;
     stream->size++;
   } // while (!stream->is_eof && stream->size < need_distance)
   return !stream->is_eof;
 }
 
-wint_t
+SR_TYPE
 stream_look_ahead (StreamReader *stream, size_t distance) {
   assert (distance > 0);
   if (!stream_fill (stream, distance))
-    return WEOF;
+    return SR_EOF;
 
   size_t index = (stream->head + distance - 1) % stream->capacity;
-  return (wint_t)stream->buffer[index];
+  return stream->buffer[index];
 }
 
-wint_t
+SR_TYPE
 stream_get (StreamReader *stream) {
   if (!stream_fill (stream, 1))
-    return WEOF;
+    return SR_EOF;
 
-  wchar_t c = stream->buffer[stream->head];
+  SR_TYPE c = stream->buffer[stream->head];
   stream->head = (stream->head + 1) % stream->capacity;
   assert (stream->size);
   stream->size--;
-  return (wint_t)c;
-}
-
-// ==================== deux implementations clasiques de l'interface
-// --- IMPLEMENTATION 1: Lecture depuis un Fichier (FILE*) ---
-static wint_t
-file_read_adapter (void *instance) {
-  return fgetwc ((FILE *)instance);
-}
-
-Reader
-create_file_reader (FILE *f) {
-  return (Reader){ .instance = f, .read_fn = file_read_adapter, .free_fn = 0 };
-}
-
-// --- IMPLEMENTATION 2: Lecture depuis une Chaîne en Mémoire ---
-struct StringReaderCtx {
-  wchar_t *str;
-  size_t cursor;
-  int free_after_use;
-};
-
-static wint_t
-string_read_adapter (void *instance) {
-  struct StringReaderCtx *ctx = instance;
-  wchar_t c = ctx->str[ctx->cursor];
-  if (c == '\0')
-    return WEOF; // Fin de chaîne
-  ctx->cursor++;
-  return (wint_t)c;
-}
-
-static void
-string_free_adapter (void *instance) {
-  struct StringReaderCtx *ctx = instance;
-  if (ctx->free_after_use)
-    free (ctx->str);
-  free (ctx);
-}
-
-Reader
-create_string_reader (wchar_t *source_str, int free_after_use) {
-  struct StringReaderCtx *ctx = malloc (sizeof (*ctx));
-  ctx->str = source_str;
-  ctx->free_after_use = free_after_use;
-  ctx->cursor = 0;
-  return (Reader){ .instance = ctx, .read_fn = string_read_adapter, .free_fn = string_free_adapter };
+  return c;
 }

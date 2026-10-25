@@ -4,20 +4,38 @@ This is an extended version of the minimalistic Reverse Polish Notation calculat
 
 As a parser (`bison`) is used, the stack of the terms of the RPN expression is automatically managed by the parser through its rules (as compared to our old beloved [HP calculators](https://en.wikipedia.org/wiki/HP-42S)).
 
-The calculator handles:
+The calculator handles :
 
-- integers;
-- decimals;
-- conversion between integers and decimals;
-- usual arithmetic operators and constants;
-- user-defines variables;
+- integers ;
+- decimals ;
+- conversion between integers and decimals ;
+- usual arithmetic operators and constants ;
+- user-defines variables ;
 - shortcuts for addition and product: when at the end of the line, `+` and `*` apply to all the expressions from the beginning of the line.
+
+## Files
+
+The parser is defined by :
+
+- the types of its tokens ([rp_types.h](rp_types.h)) ;
+- its grammar rules ([rpgrammar.y](rpgrammar.y)) ;
+- its actions (operands and operators) ([rp_parser.h](rp_parser.h) and [rp_parser.c](rp_parser.c)).
+
+The calculator comes in two flavours :
+
+- as command-line ([rpcli.c](rpcli.c)) : run `make rpcli` and `./rpcli` ;
+- as a [mongoose HTTP server](https://mongoose.ws/) ([rphttpserver.c](rphttpserver.c)) : run `make rphttpserver` and `./rphttpserver`.
+
+This project contains as well :
+
+- a rudimentary lexer ([rp_lexer.c](rp_lexer.c)) ;
+- an agnostic stream reader with look-ahead capability ([streamreader.h](streamreader.h) and [streamreader.c](streamreader.c), tested with [test_streamreader.c](test_streamreader.c)).
 
 ## Examples
 
-Some examples of command lines.
+Below some examples of commands accepted by the calculator.
 
-> Terms are separated by spaces.
+> Terms must be separated by spaces.
 
 Line | Result | Comment
 --|--|--
@@ -45,15 +63,14 @@ Line | Result | Comment
 `6 3 + 2 res * -` | `5 [integer]` | `res` equals `2`, the previous operand.
 `6 3 + 2 _ * -` | `3 [integer]` | `_` equals `3`, the last operand of the previous operation `6 3 +`.
 `6 3 + 2 ans * -` | `-1 [integer]` | `ans` equals `5`, the result of the calculation of the last command line.
-`vars` | `r = 129474 ...` | List all constants and user-defined variables.
+`vars` | `r = 129474 ...` | List all user-defined variables.
 `exit` | `Bye!` | Quit.
-
 
 ## Commands
 
 Word | Description
 --|--
-`vars` | List all the constants and user-defined variables
+`vars` | List all the user-defined variables
 `exit` | Quit
 
 ## Functions

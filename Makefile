@@ -8,14 +8,18 @@ BFLAGS+=--language=C -Werror
 # Generate the parser description file (%verbose)
 #BFLAGS+=--debug --verbose
 
-all: rpcli
+all: rpcli rphttpserver
 	$(RUNNER) ./"$<"
 
+rpcli: CFLAGS+=-DSR_TYPE=wint_t -DSR_EOF=WEOF
 rpcli: LDLIBS=-lm
-rpcli: rpgrammar.tab.o rpcli.o rp_lexer.o streamreader.o
+rpcli: rpgrammar.tab.o rpcli.o rp_lexer.o streamreader.o wcs_reader_adapter.o
+################################################
+test_streamreader: CFLAGS+=-DSR_TYPE=int -DSR_EOF=EOF
+test_streamreader: test_streamreader.c streamreader.o str_reader_adapter.o
 ################################################
 .INTERMEDIATE: rpcli.o
-rpcli.o: rpcli.c rpgrammar.tab.h rp_types.h rp_parser.h streamreader.h
+rpcli.o: rpcli.c rpgrammar.tab.h rp_types.h rp_parser.h streamreader.h wcs_reader_adapter.h
 ################################################
 .INTERMEDIATE: rp_lexer.o
 rp_lexer.o: rp_lexer.c rpgrammar.tab.h rp_types.h rp_parser.h streamreader.h
@@ -37,14 +41,17 @@ rpgrammar.tab.c: rp_types.h rp_parser.h rp_parser.c streamreader.h
 %.tab.o: CFLAGS+=-Wno-switch-enum -Wno-switch-default
 %.tab.o: %.tab.c
 ################################################
-.INTERMEDIATE: streamreader.o
+.INTERMEDIATE: streamreader.o wcs_reader_adapter.o str_reader_adapter.o
 streamreader.o: streamreader.c streamreader.h
+wcs_reader_adapter.o: wcs_reader_adapter.c wcs_reader_adapter.h streamreader.h
+str_reader_adapter.o: str_reader_adapter.c str_reader_adapter.h streamreader.h
 ################################################
-test_streamreader: streamreader.o test_streamreader.c
+test_streamreader: streamreader.o str_reader_adapter.o test_streamreader.c
 ################################################
 .INTERMEDIATE: mongoose.o rphttpserver.o
 mongoose.o: CFLAGS=-Wno-cast-align -Wno-cast-qual -Wno-float-equal -Wno-arith-conversion -Wno-switch-default -Wno-redundant-decls
 
+rphttpserver: CFLAGS+=-DSR_TYPE=wint_t -DSR_EOF=WEOF
 rphttpserver: LDLIBS=-lm
-rphttpserver: rpgrammar.tab.o rphttpserver.o rp_lexer.o streamreader.o mongoose.o
-rphttpserver.o: rphttpserver.c rpgrammar.tab.h rp_types.h rp_parser.h streamreader.h
+rphttpserver: rpgrammar.tab.o rphttpserver.o rp_lexer.o streamreader.o mongoose.o wcs_reader_adapter.o
+rphttpserver.o: rphttpserver.c mongoose.h rpgrammar.tab.h rp_types.h rp_parser.h streamreader.h wcs_reader_adapter.h

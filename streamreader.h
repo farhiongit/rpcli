@@ -1,38 +1,42 @@
 #ifndef __STREAM_READER_H__
 #define __STREAM_READER_H__
 
-#include <errno.h>
-#include <stddef.h>
 #include <stdio.h>
 #include <wchar.h>
 
+#ifndef SR_TYPE
+#error "SR_TYPE should be defined."
+#endif
+#ifndef SR_EOF
+#error "SR_EOF should be defined."
+#endif
+
 typedef struct {
-  void *instance;                     // Pointeur vers la structure concrète (FILE*, StringCtx, etc.)
-  wint_t (*read_fn) (void *instance); // Fonction pour lire un caractère de l'instance (retourne le caractère lu, ou EOF en cas de fin de flux/erreur.)
-  void (*free_fn) (void *instance);   // Désalloue l'instance.
+  void *instance;                      // Pointer to the concrete structure (FILE*, string, etc.)
+  SR_TYPE (*read_fn) (void *instance); // Function to read a character from the instance (returns the character read, or EOF in the event of an end-of-stream or error.)
+  void (*free_fn) (void *instance);    // Optional instance deallocator.
 } Reader;
 
-// Déclaration des fonctions du Stream Reader pour référence
 typedef struct StreamReader StreamReader;
 
+// Create a stream for reading.
 __attribute__ ((warn_unused_result)) StreamReader *stream_create (Reader reader);
+
+// Destroy a stream.
 void stream_destroy (StreamReader *stream);
 
-// Retourne :
-// - EOF si la fin du stream est atteinte ou en cas de d'erreur ;
-// - errno = ENOMEM en cas d'errur de dépassement mémoire,
-// - errno est positionné en cas d'erreur de lecture du flux par stream->read_fn ;
-// - sinon, le nième (n > 0) caractère suivant, sans le consommer du stream.
-wint_t stream_look_ahead (StreamReader *stream, size_t n);
-// Retourne :
-// - EOF si la fin du stream est atteinte ou en cas de d'erreur ;
-// - errno est positionné en cas d'erreur de lecture du flux par stream->read_fn ;
-// - sinon, le caractère suivant du stream en le consommant.
-wint_t stream_get (StreamReader *stream);
+// Read a character from the stream.
+// Returns:
+// - EOF if the end of the stream is reached or an error occurs;
+// - errno is set if an error occurs while reading from the stream via stream->read_fn;
+// - otherwise, the next character from the stream, consuming it.
+SR_TYPE stream_get (StreamReader *stream);
 
-// Helper: create from a FILE
-Reader create_file_reader (FILE *f); // f is the instance of the returned reader.
-
-// Helper: create from a string
-Reader create_string_reader (wchar_t *source_str, int free_after_use);
+// Look-ahead by n characters.
+// Returns:
+// - EOF if the end of the stream is reached or an error occurs;
+// - errno = ENOMEM in the event of a memory allocation error;
+// - errno is set if an error occurs while reading from the stream via stream->read_fn;
+// - otherwise, the nth (n > 0) subsequent character, without consuming it from the stream.
+SR_TYPE stream_look_ahead (StreamReader *stream, size_t n);
 #endif

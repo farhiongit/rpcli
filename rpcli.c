@@ -1,4 +1,5 @@
 #include "rpgrammar.tab.h"
+#include "wcs_reader_adapter.h"
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
