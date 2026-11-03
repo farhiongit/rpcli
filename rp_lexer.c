@@ -13,12 +13,10 @@ int
 RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
   wchar_t *c;
   while ((c = stream_look_ahead (in, 1)) && iswblank ((wint_t)*c)) // a space or a tab
-    if (stream_forgetter (in))
-      stream_forgetter (in) (stream_get (in));
+    stream_forgetter (in) (stream_get (in));
 
   if ((c = stream_look_ahead (in, 1)) && iswspace ((wint_t)*c)) { // but not blank -> '\n', '\r', '\v', '\f'
-    if (stream_forgetter (in))
-      stream_forgetter (in) (stream_get (in));
+    stream_forgetter (in) (stream_get (in));
     return RPN_EOL;
   }
   if (!c)
@@ -31,8 +29,7 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
     wcs[length] = (wchar_t)(*c);
     wcs = realloc (wcs, (++length + 1) * sizeof (*wcs));
     wcs[length] = L'\0';
-    if (stream_forgetter (in))
-      stream_forgetter (in) (stream_get (in));
+    stream_forgetter (in) (stream_get (in));
   }
 
   int token = -1;

@@ -4,11 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define USED(expr) \
-  do {             \
-    if ((expr)) {  \
-    }              \
-  } while (0)
 
 #define LIST_OF_TOKENS                                   \
   ON_TOKEN_DO (EOF)                                      \
@@ -63,7 +58,7 @@ next_token (StreamReader *stream) {
 
   // 1. Ignorer les espaces blancs
   while (c && (*c == ' ' || *c == '\t' || *c == '\n' || *c == '\r')) {
-    USED (stream_get (stream));
+    stream_forgetter (stream) (stream_get (stream));
     c = stream_look_ahead (stream, 1);
   }
 
@@ -112,16 +107,16 @@ next_token (StreamReader *stream) {
 
   // 5. Identification des symboles simples (Opérateurs / Ponctuation)
   if (c && *c == '=') {
-    USED (stream_get (stream));
+    stream_forgetter (stream) (stream_get (stream));
     return (Token){ .type = TOKEN_ASSIGN, .value = strdup ("=") };
   }
   if (c && *c == ';') {
-    USED (stream_get (stream));
+    stream_forgetter (stream) (stream_get (stream));
     return (Token){ .type = TOKEN_SEMICOLON, .value = strdup (";") };
   }
 
   // 6. Caractère inconnu
-  USED (stream_get (stream));
+  stream_forgetter (stream) (stream_get (stream));
   char unknown_str[2] = { *(char *)c, '\0' };
   return (Token){ .type = TOKEN_UNKNOWN, .value = strdup (unknown_str) };
 }

@@ -9,10 +9,6 @@
 
 // Test with: curl -v --data-raw $'11 50 +\n' http://127.0.0.1:8000/api/rpn
 
-// fmemopen can't be used to read wide-characters.
-// The stream returned by fmemopen() is byte-oriented and cannot be changed to wide-character oriented.
-// See https://stackoverflow.com/questions/45624195/read-wide-char-from-a-stream-created-with-fmemopen
-// Therefore, we use a generic input stream.
 static wchar_t *
 to_wcs (const struct mg_str source_str) {
   if (!source_str.buf || !source_str.len)
@@ -75,6 +71,10 @@ http_ev_handler (struct mg_connection *c, int ev, void *ev_data) {
       assert (env);
       wchar_t *wcs = to_wcs (hm->body);
       assert (wcs);
+      // fmemopen can't be used to read wide-characters.
+      // The stream returned by fmemopen() is byte-oriented and cannot be changed to wide-character oriented.
+      // See https://stackoverflow.com/questions/45624195/read-wide-char-from-a-stream-created-with-fmemopen
+      // Therefore, we use a generic input stream.
       StreamReader *stream = stream_create (wcs_reader (wcs));
       assert (stream);
       RPN_parse (env, stream);
