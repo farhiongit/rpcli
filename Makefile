@@ -3,7 +3,7 @@ CFLAGS+=-Wall
 BFLAGS+=--language=C -Werror
 
 #RUNNER=valgrind --leak-check=full --show-leak-kinds=all
-#CFLAGS+=-g
+CFLAGS+=-g
 # Enable run-time traces (%define parse.trace, RPN_DEBUG set to 1, RPN_debug can be set to activate tracing)
 # Generate the parser description file (%verbose)
 #BFLAGS+=--debug --verbose
@@ -11,24 +11,22 @@ BFLAGS+=--language=C -Werror
 all: rpcli rphttpserver
 	$(RUNNER) ./"$<"
 
-rpcli: CFLAGS+=-DSR_TYPE=wint_t -DSR_EOF=WEOF
 rpcli: LDLIBS=-lm
-rpcli: rpgrammar.tab.o rpcli.o rp_lexer.o streamreader.o wcs_reader_adapter.o
+rpcli: rpgrammar.tab.o rpcli.o rp_lexer.o genericstreamreader.o
 ################################################
-test_streamreader: CFLAGS+=-DSR_TYPE=int -DSR_EOF=EOF
-test_streamreader: test_streamreader.c streamreader.o str_reader_adapter.o
+test_streamreader: test_streamreader.c genericstreamreader.o
 ################################################
 .INTERMEDIATE: rpcli.o
-rpcli.o: rpcli.c rpgrammar.tab.h rp_types.h rp_parser.h streamreader.h wcs_reader_adapter.h
+rpcli.o: rpcli.c rpgrammar.tab.h rp_types.h rp_parser.h genericstreamreader.h
 ################################################
 .INTERMEDIATE: rp_lexer.o
-rp_lexer.o: rp_lexer.c rpgrammar.tab.h rp_types.h rp_parser.h streamreader.h
+rp_lexer.o: rp_lexer.c rpgrammar.tab.h rp_types.h rp_parser.h genericstreamreader.h
 ################################################
 .INTERMEDIATE: rpgrammar.tab.c rpgrammar.tab.o
 rpgrammar.tab.o: rpgrammar.tab.c rpgrammar.tab.h rp_types.h rp_parser.h rp_parser.c
 
-rpgrammar.tab.h: rp_types.h rp_parser.h streamreader.h
-rpgrammar.tab.c: rp_types.h rp_parser.h rp_parser.c streamreader.h
+rpgrammar.tab.h: rp_types.h rp_parser.h genericstreamreader.h
+rpgrammar.tab.c: rp_types.h rp_parser.h rp_parser.c genericstreamreader.h
 
 # Group of multiple targets (with "&:" in GNU make 4.3 and later).
 # https://www.gnu.org/software/make/manual/html_node/Multiple-Targets.html
@@ -41,17 +39,12 @@ rpgrammar.tab.c: rp_types.h rp_parser.h rp_parser.c streamreader.h
 %.tab.o: CFLAGS+=-Wno-switch-enum -Wno-switch-default
 %.tab.o: %.tab.c
 ################################################
-.INTERMEDIATE: streamreader.o wcs_reader_adapter.o str_reader_adapter.o
-streamreader.o: streamreader.c streamreader.h
-wcs_reader_adapter.o: wcs_reader_adapter.c wcs_reader_adapter.h streamreader.h
-str_reader_adapter.o: str_reader_adapter.c str_reader_adapter.h streamreader.h
+.INTERMEDIATE: genericstreamreader.o
+genericstreamreader.o: genericstreamreader.c genericstreamreader.h
 ################################################
-test_streamreader: streamreader.o str_reader_adapter.o test_streamreader.c
-################################################
-.INTERMEDIATE: mongoose.o rphttpserver.o
-mongoose.o: CFLAGS=-Wno-cast-align -Wno-cast-qual -Wno-float-equal -Wno-arith-conversion -Wno-switch-default -Wno-redundant-decls
+.INTERMEDIATE: mongoose/mongoose.o rphttpserver.o
+mongoose/mongoose.o: CFLAGS=-Wno-cast-align -Wno-cast-qual -Wno-float-equal -Wno-arith-conversion -Wno-switch-default -Wno-redundant-decls
 
-rphttpserver: CFLAGS+=-DSR_TYPE=wint_t -DSR_EOF=WEOF
 rphttpserver: LDLIBS=-lm
-rphttpserver: rpgrammar.tab.o rphttpserver.o rp_lexer.o streamreader.o mongoose.o wcs_reader_adapter.o
-rphttpserver.o: rphttpserver.c mongoose.h rpgrammar.tab.h rp_types.h rp_parser.h streamreader.h wcs_reader_adapter.h
+rphttpserver: rpgrammar.tab.o rphttpserver.o rp_lexer.o genericstreamreader.o mongoose/mongoose.o
+rphttpserver.o: rphttpserver.c mongoose/mongoose.h rpgrammar.tab.h rp_types.h rp_parser.h genericstreamreader.h

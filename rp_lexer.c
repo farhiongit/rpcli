@@ -11,25 +11,28 @@
 //=============== LEXER ====================
 int
 RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
-  wint_t c;
-  while (iswblank (c = stream_look_ahead (in, 1))) // a space or a tab
-    assert (c == stream_get (in));
+  wchar_t *c;
+  while ((c = stream_look_ahead (in, 1)) && iswblank ((wint_t)*c)) // a space or a tab
+    if (stream_forgetter (in))
+      stream_forgetter (in) (stream_get (in));
 
-  if (iswspace (c = stream_look_ahead (in, 1))) { // but not blank -> '\n', '\r', '\v', '\f'
-    assert (c == stream_get (in));
+  if ((c = stream_look_ahead (in, 1)) && iswspace ((wint_t)*c)) { // but not blank -> '\n', '\r', '\v', '\f'
+    if (stream_forgetter (in))
+      stream_forgetter (in) (stream_get (in));
     return RPN_EOL;
   }
-  if (c == WEOF)
+  if (!c)
     return RPN_END;
 
   wchar_t *wcs = malloc (sizeof (*wcs));
   wcs[0] = L'\0';
   size_t length = 0;
-  while (!iswspace (c = stream_look_ahead (in, 1)) && c != WEOF) { // any character can be part of a word
-    assert (c == stream_get (in));
-    wcs[length] = (wchar_t)c;
+  while ((c = stream_look_ahead (in, 1)) && !iswspace ((wint_t)*c)) { // any character can be part of a word
+    wcs[length] = (wchar_t)(*c);
     wcs = realloc (wcs, (++length + 1) * sizeof (*wcs));
     wcs[length] = L'\0';
+    if (stream_forgetter (in))
+      stream_forgetter (in) (stream_get (in));
   }
 
   int token = -1;

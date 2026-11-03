@@ -1,7 +1,7 @@
 #undef NDEBUG
-#include "mongoose.h"
+#include "genericstreamreader.h"
+#include "mongoose/mongoose.h"
 #include "rpgrammar.tab.h"
-#include "wcs_reader_adapter.h"
 #include <assert.h>
 #include <locale.h>
 
@@ -13,10 +13,10 @@
 // The stream returned by fmemopen() is byte-oriented and cannot be changed to wide-character oriented.
 // See https://stackoverflow.com/questions/45624195/read-wide-char-from-a-stream-created-with-fmemopen
 // Therefore, we use a generic input stream.
-static Reader
-create_mongoose_reader (const struct mg_str source_str) {
+static wchar_t *
+to_wcs (const struct mg_str source_str) {
   if (!source_str.buf || !source_str.len)
-    return (Reader){ 0 };
+    return 0;
   char *str = 0;
   if (source_str.buf[source_str.len - 1] != '\0') {
     str = malloc ((source_str.len + 1) * sizeof (*str));
@@ -25,16 +25,14 @@ create_mongoose_reader (const struct mg_str source_str) {
       str[i] = source_str.buf[i];
     str[source_str.len] = 0;
   } else
-    str = strdup (source_str.buf);
-  assert (str);
+    assert ((str = strdup (source_str.buf)));
   size_t nbwc = mbstowcs (0, str, 0);
   assert (nbwc != (size_t)-1);
   wchar_t *wcs = malloc ((nbwc + 1) * sizeof (*wcs));
   assert (wcs);
   assert (nbwc == mbstowcs (wcs, str, nbwc + 1));
   free (str);
-  Reader r = create_wcs_reader (wcs, 1 /* wcs will be free'd after use when stream_destroy is called (which calls r.free_fn on r.instance).*/);
-  return r;
+  return wcs;
 }
 
 static int
@@ -75,12 +73,14 @@ http_ev_handler (struct mg_connection *c, int ev, void *ev_data) {
       char result[200] = { 0 };
       context *env = RPN_init ((struct report){ .integer = RPN_print_integer, .decimal = RPN_print_decimal, .error = RPN_print_error, .message = RPN_print_message, .arg = result });
       assert (env);
-      Reader base_reader = create_mongoose_reader (hm->body);
-      StreamReader *stream = stream_create (base_reader);
+      wchar_t *wcs = to_wcs (hm->body);
+      assert (wcs);
+      StreamReader *stream = stream_create (wcs_reader (wcs));
       assert (stream);
       RPN_parse (env, stream);
       mg_http_reply (c, 200, "", "%s\n%s\n", hm->body.buf, result);
       stream_destroy (stream);
+      free (wcs);
       RPN_cleanup (env);
     } else {
       mg_http_reply (c, 400, "", "");

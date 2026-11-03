@@ -5,7 +5,7 @@
 // Required by the YYSTYPE definition in both the parser IMPLEMENTATION file and the parser HEADER file.
 %code requires {
   #include "rp_types.h"
-  #include "streamreader.h"
+  #include "genericstreamreader.h"
 } // %code requires
 
 // The union YYSTYPE (or union name) definition

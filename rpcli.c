@@ -1,5 +1,5 @@
+#include "genericstreamreader.h"
 #include "rpgrammar.tab.h"
-#include "wcs_reader_adapter.h"
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +29,7 @@ main (void) {
 #endif
 
   context *env = RPN_init ((struct report){ .integer = RPN_print_integer, .decimal = RPN_print_decimal, .error = RPN_print_error, .message = RPN_print_message });
-  StreamReader *reader = stream_create (create_file_reader (stdin));
+  StreamReader *reader = stream_create (wc_file_reader (stdin));
   while (RPN_parse (env, reader)) // On error, restart.
     ;
   stream_destroy (reader);
