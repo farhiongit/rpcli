@@ -63,9 +63,9 @@ stream_fill (StreamReader *stream, size_t need_distance) {
 
 static void
 stream_drain (StreamReader *stream) {
-  if (stream->reader.forget_fn)
+  if (stream->reader.forget_read_fn)
     while (stream->size)
-      stream->reader.forget_fn (stream_get (stream));
+      stream->reader.forget_read_fn (stream_get (stream));
 }
 
 static void
@@ -122,16 +122,16 @@ stream_look_ahead (StreamReader *stream, size_t distance) {
 void
 stream_destroy (StreamReader *stream) {
   stream_drain (stream);
-  if (stream->reader.free_fn)
-    stream->reader.free_fn (stream->reader.instance);
+  if (stream->reader.free_instance_fn)
+    stream->reader.free_instance_fn (stream->reader.instance);
   free (stream->buffer);
   free (stream);
 }
 
 free_prototype
 stream_forgetter (StreamReader *stream) {
-  if (stream->reader.forget_fn)
-    return stream->reader.forget_fn;
+  if (stream->reader.forget_read_fn)
+    return stream->reader.forget_read_fn;
   else
     return _noop;
 }
@@ -150,7 +150,7 @@ ch_file_reader_adapter (void *f) {
 
 Reader
 ch_file_reader (FILE *f) {
-  return (Reader){ .instance = f, .read_fn = ch_file_reader_adapter, .forget_fn = free };
+  return (Reader){ .instance = f, .read_fn = ch_file_reader_adapter, .forget_read_fn = free };
 }
 
 static void *
@@ -166,7 +166,7 @@ wc_file_reader_adapter (void *f) {
 
 Reader
 wc_file_reader (FILE *f) {
-  return (Reader){ .instance = f, .read_fn = wc_file_reader_adapter, .forget_fn = free };
+  return (Reader){ .instance = f, .read_fn = wc_file_reader_adapter, .forget_read_fn = free };
 }
 
 struct StringReaderCtx {
@@ -190,7 +190,7 @@ str_reader (char *source_str) {
   struct StringReaderCtx *ctx = malloc (sizeof (*ctx));
   ctx->str = source_str;
   ctx->cursor = 0;
-  return (Reader){ .instance = ctx, .read_fn = str_read_adapter, .free_fn = free };
+  return (Reader){ .instance = ctx, .read_fn = str_read_adapter, .free_instance_fn = free };
 }
 
 static void *
@@ -209,5 +209,5 @@ wcs_reader (wchar_t *source_str) {
   struct StringReaderCtx *ctx = malloc (sizeof (*ctx));
   ctx->str = source_str;
   ctx->cursor = 0;
-  return (Reader){ .instance = ctx, .read_fn = wcs_read_adapter, .free_fn = free };
+  return (Reader){ .instance = ctx, .read_fn = wcs_read_adapter, .free_instance_fn = free };
 }

@@ -29,9 +29,11 @@ The calculator comes in two flavours :
 This project contains as well :
 
 - a rudimentary lexer ([rp_lexer.c](rp_lexer.c)) ;
-- an agnostic stream reader with look-ahead capability ([streamreader.h](streamreader.h) and [streamreader.c](streamreader.c), tested with [test_streamreader.c](test_streamreader.c)).
+- a  [generic agnostic stream reader](#generic-input-stream) with look-ahead capability ([genericstreamreader.h](genericstreamreader.h) and [genericstreamreader.c](genericstreamreader.c), tested with [test_streamreader.c](test_streamreader.c)).
 
-## Examples
+## Calculator logic
+
+### Examples
 
 Below some examples of commands accepted by the calculator.
 
@@ -66,14 +68,12 @@ Line | Result | Comment
 `vars` | `r = 129474 ...` | List all user-defined variables.
 `exit` | `Bye!` | Quit.
 
-## Commands
+### Commands
 
 Word | Description
 --|--
 `vars` | List all the user-defined variables
 `exit` | Quit
-
-## Functions
 
 ### Constants
 
@@ -155,4 +155,33 @@ Word | Description
 `&` | And
 `\|` | Or
 `^` | Xor
+
+## Generic input stream
+
+The generic stream reader with look-ahead capability ([genericstreamreader.h](genericstreamreader.h) and [genericstreamreader.c](genericstreamreader.c) works like this:
+
+- Create a new stream with `stream_create (Reader reader)` where `reader` is a user-defined sequential reader.
+- Read and consume one "character" from the stream with `stream_get (StreamReader *stream)` (which calls `read_fn` on the `instance` defined by the `reader`.)
+
+  - Once this character has been used, the function returned by `stream_forgetter (StreamReader *stream)` **should be applied** to this character to avoid memory leaks (writing something like `stream_forgetter (stream) (c)` ; `stream_forgetter` mainly returns the function `forget_read_fn` defined by the `reader`.)
+
+- Read ahead the nth character, *without consuming it*, with `stream_look_ahead (StreamReader *stream, size_t n)`.
+- Destroy a stream with `stream_destroy (StreamReader *stream)` (which calls `free_instance_fn` on the `instance` defined by the `reader`.) 
+
+### Helpers
+
+Four usual readers are provided for convenience, to be used directly by `stream_create`:
+
+- `ch_file_reader` calls `fgetc` internally on a file.
+- `wc_file_reader` calls `fgetwc` internally on a file.
+
+  - Used for example by [rpcli.c](rpcli.c).
+
+- `str_reader` mimics `fgetc` on a file that would have been opened by `fmemopen`.
+
+  - Used for example by [test_streamreader.c](test_streamreader.c).
+
+- `wcs_reader` mimics `fgetwc` on a file that would have been opened by `fmemopen` (actually, `fmemopen` cannot be used on an multi-bytes character string, which is why this generic stream reader was written!).
+
+  - Used for example by [rphttpserver.c](rphttpserver.c).
 
