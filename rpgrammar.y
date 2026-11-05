@@ -23,7 +23,8 @@
 
 // Code needed by the parser, inserted at the beginning of the parser IMPLEMENTATION file only, BEFORE the definition of yyparse.
 %code {
-  #include "rp_parser.c"  // Code included here.
+  #include "rp_lexer.c"   // Lexer code included here.
+  #include "rp_parser.c"
 } // %code
 
 // Declarations.
@@ -37,6 +38,7 @@
 // For debugging purpose
 %printer { _rpn_printer_number ($$); } <number>
 %printer { fprintf (stderr, "%ls", $$->name); } <symbol>
+%printer { fprintf (stderr, "%ls", $$); } <newvar_name>
 
 // Character tokens (among the ten digits, the 52 lower- and upper-case English letters, and \a\b\t\n\v\f\r !\"#%&'()*+,-./:;<=>?[\\]^_{|}~) are declared automatically.
 %token END 0 _("end of file")  // the end token (token 0) is specifically redefined.
@@ -50,7 +52,7 @@
 
 %token <number> LAST_X _("last operand")
 %token <number> LAST_RESULT _("last operation")
-%token <number> LAST_ANSWER _("last result")
+%token <number> LAST_ANSWER _("last calculation")
 
 %token <symbol> F0A _("constant function")
 %token <symbol> F1A _("unary function")
@@ -58,10 +60,11 @@
 
 %token MEMORY
 
-%type <number> expression sum_of_expressions product_of_expressions calculation
+%type <number> simple_expression expression sum_of_expressions product_of_expressions calculation operation
+%type <symbol> no_arg
 
 // Initialisation before parsing.
-%initial-action { (void)_rpn_printer_number; if (!env) abort (); _rpn_report_message (env, _ ("Type Ctrl-d or '%s' to quit.\n"), "exit");}
+%initial-action { (void)RPN_mul; (void)RPN_add; (void)_rpn_printer_number; if (!env) abort (); _rpn_report_message (env, _ ("Type Ctrl-d or '%s' to quit.\n"), "exit"); _rpn_report_message (env, "rpn> "); }
 
 // Invoked for the specifically redefined end token (token 0) when normal exit (no error).
 %destructor { _rpn_report_message (env, _ ("Bye !\n")); } END
@@ -71,77 +74,73 @@
 // Invoked on error recovery and normal exit (no error).
 //%destructor {  } input;
 
-%glr-parser // Needed for sum_of_expressions and product_of_expressions to work.
+// Needed for sum_of_expressions and product_of_expressions to work.
+%glr-parser
 %expect 21
 %expect-rr 7
+
 %start input
 %%
 // Grammar rules.
 // Always use left recursion only.
 input:
-    %empty { _rpn_report_message (env, "rpn> "); }
-  | input EOL { _rpn_report_message (env, "rpn> "); }
-  | input command EOL { _rpn_report_message (env, "rpn> "); }
-  //| error EOL { yyerrok; }
+    %empty
+  | input command { _rpn_report_message (env, "rpn> "); }
   ;
 
 command:
-    calculation
-  | set_var
-  | set_newvar
-  | statement
-  //| error
+    EOL
+  | operation EOL { env->last_ans = env->last_res = $1 ; }
+  | statement EOL
   ;
 
 statement:
     MEMORY { RPN_print_vars(env); }
   ;
 
-set_var:
-    KNOWN_VARIABLE[var] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var ($var, $calculation); }
-  //| error
-  ;
-
-set_newvar:
-    NEW_VARIABLE[varname] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var (RPN_add_var (env, $varname), $calculation);
+operation:
+    calculation
+  | KNOWN_VARIABLE[var] '=' calculation { if ($3.type != UNDEFINED) RPN_set_var ($var, $$ = $3); }
+  | NEW_VARIABLE[varname] '=' calculation { if ($3.type != UNDEFINED) RPN_set_var (RPN_add_var (env, $varname), $$ = $3);
                                             free ($varname); }
-  //| error
+  | error { $$ = (struct number){ .type = UNDEFINED } ; }
   ;
 
 calculation:
-    sum_of_expressions '+' { env->last_ans = env->last_res = $$ = $1 ; _rpn_report_number (env, $1); }
-  | product_of_expressions '*' { env->last_ans = env->last_res = $$ = $1 ; _rpn_report_number (env, $1); }
-  | expression { env->last_ans = env->last_res = $$ = $1 ; _rpn_report_number (env, $1); }
-  //| error
+    expression { $$ = $1 ; _rpn_report_number (env, $1); }
+  | sum_of_expressions '+' { $$ = $1 ; _rpn_report_number (env, $1); }
+  | product_of_expressions '*' { $$ = $1 ; _rpn_report_number (env, $1); }
   ;
 
 // Always use left recursion only.
 sum_of_expressions:
-    expression[first] expression[second] expression[third] { env->last_res = $$ = RPN_add (env, RPN_add (env, $first, $second), env->last_x = $third); }
-  | sum_of_expressions[first] expression[second] { env->last_res = $$ = RPN_add (env, $first, env->last_x = $second); }
+    expression[first] expression[second] expression[third] { $$ = RPN_add (env, RPN_add (env, $first, $second), env->last_x = $third); }
+  | sum_of_expressions[first] expression[second] { $$ = RPN_add (env, $first, env->last_x = $second); }
   ;
 
 // Always use left recursion only.
 product_of_expressions:
-    expression[first] expression[second] expression[third] { env->last_res = $$ = RPN_mul (env, RPN_mul (env, $first, $second), env->last_x = $third); }
-  | product_of_expressions[first] expression[second] { env->last_res = $$ = RPN_mul (env, $first, env->last_x = $second); }
+    expression[first] expression[second] expression[third] { $$ = RPN_mul (env, RPN_mul (env, $first, $second), env->last_x = $third); }
+  | product_of_expressions[first] expression[second] { $$ = RPN_mul (env, $first, env->last_x = $second); }
   ;
 
 expression:
-    NUMBER { env->last_res = $$ = $1; }
-  | LAST_X { env->last_res = $$ = env->last_x; }
-  | LAST_RESULT { env->last_res = $$ = env->last_res; }
-  | LAST_ANSWER { env->last_res = $$ = env->last_ans; }
-  | CONSTANT { env->last_res = $$ = _rpn_f0a (env, $1); }
-  | KNOWN_VARIABLE { env->last_res = $$ = _rpn_f0a (env, $1); }
-  | F0A { env->last_res = $$ = _rpn_f0a (env, $1); }
+    simple_expression { env->last_res = $$ = $1; }
   | expression[first] F1A[function] { env->last_res = $$ = _rpn_f1a (env, $function, env->last_x = $first); }
   | expression[first] expression[second] F2A[function] { env->last_res = $$ = _rpn_f2a (env, $function, $first, env->last_x = $second); }
   ;
+
+simple_expression:
+    NUMBER
+  | LAST_X { $$ = env->last_x; }
+  | LAST_RESULT { $$ = env->last_res; }
+  | LAST_ANSWER { $$ = env->last_ans; }
+  | no_arg { $$ = _rpn_f0a (env, $1); }
+  ;
+
+no_arg: CONSTANT | KNOWN_VARIABLE | F0A ;
 
 %%
 
 // Code needed by the parser, copied verbatim to the end of the parser IMPLEMENTATION file only, AFTER the definition of yyparse.
 // Definitions of yylex and yyerror often go here.
-
-// Lexer in rp_lexer.c

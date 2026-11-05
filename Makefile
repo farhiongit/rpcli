@@ -12,15 +12,12 @@ all: rpcli rphttpserver
 	$(RUNNER) ./"$<"
 
 rpcli: LDLIBS=-lm
-rpcli: rpgrammar.tab.o rpcli.o rp_lexer.o genericstreamreader.o
+rpcli: rpgrammar.tab.o rpcli.o genericstreamreader.o
 ################################################
 test_streamreader: test_streamreader.c genericstreamreader.o
 ################################################
 .INTERMEDIATE: rpcli.o
 rpcli.o: rpcli.c rpgrammar.tab.h rp_types.h rp_parser.h genericstreamreader.h
-################################################
-.INTERMEDIATE: rp_lexer.o
-rp_lexer.o: rp_lexer.c rpgrammar.tab.h rp_types.h rp_parser.h genericstreamreader.h
 ################################################
 .INTERMEDIATE: rpgrammar.tab.c rpgrammar.tab.o
 rpgrammar.tab.o: rpgrammar.tab.c rpgrammar.tab.h rp_types.h rp_parser.h rp_parser.c
@@ -46,5 +43,5 @@ genericstreamreader.o: genericstreamreader.c genericstreamreader.h
 mongoose/mongoose.o: CFLAGS=-Wno-cast-align -Wno-cast-qual -Wno-float-equal -Wno-arith-conversion -Wno-switch-default -Wno-redundant-decls
 
 rphttpserver: LDLIBS=-lm
-rphttpserver: rpgrammar.tab.o rphttpserver.o rp_lexer.o genericstreamreader.o mongoose/mongoose.o
+rphttpserver: rpgrammar.tab.o rphttpserver.o genericstreamreader.o mongoose/mongoose.o
 rphttpserver.o: rphttpserver.c mongoose/mongoose.h rpgrammar.tab.h rp_types.h rp_parser.h genericstreamreader.h

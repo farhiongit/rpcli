@@ -9,7 +9,7 @@
 #define _(str) (str) // i18n
 
 //=============== LEXER ====================
-int
+static int
 RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
   wchar_t *c;
   while ((c = stream_look_ahead (in, 1)) && iswblank ((wint_t)*c)) // a space or a tab
