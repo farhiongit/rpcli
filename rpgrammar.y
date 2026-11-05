@@ -64,7 +64,7 @@
 %type <symbol> no_arg
 
 // Initialisation before parsing.
-%initial-action { (void)RPN_mul; (void)RPN_add; (void)_rpn_printer_number; if (!env) abort (); _rpn_report_message (env, _ ("Type Ctrl-d or '%s' to quit.\n"), "exit"); _rpn_report_message (env, "rpn> "); }
+%initial-action { (void)RPN_mul; (void)RPN_add; (void)_rpn_printer_number; if (!env) abort (); _rpn_report_message (env, _ ("Type Ctrl-d or '%s' to quit.\n"), "exit"); }
 
 // Invoked for the specifically redefined end token (token 0) when normal exit (no error).
 %destructor { _rpn_report_message (env, _ ("Bye !\n")); } END
@@ -84,7 +84,7 @@
 // Grammar rules.
 // Always use left recursion only.
 input:
-    %empty
+    %empty { _rpn_report_message (env, "rpn> "); }
   | input command { _rpn_report_message (env, "rpn> "); }
   ;
 
@@ -92,6 +92,7 @@ command:
     EOL
   | operation EOL { env->last_ans = env->last_res = $1 ; }
   | statement EOL
+  | error EOL { yyerrok ; }
   ;
 
 statement:
@@ -103,7 +104,6 @@ operation:
   | KNOWN_VARIABLE[var] '=' calculation { if ($3.type != UNDEFINED) RPN_set_var ($var, $$ = $3); }
   | NEW_VARIABLE[varname] '=' calculation { if ($3.type != UNDEFINED) RPN_set_var (RPN_add_var (env, $varname), $$ = $3);
                                             free ($varname); }
-  | error { $$ = (struct number){ .type = UNDEFINED } ; }
   ;
 
 calculation:
