@@ -1,12 +1,13 @@
 # Using GNU Make >= 4.3
 CFLAGS+=-Wall
-BFLAGS+=--language=C -Werror
+BFLAGS+=--language=C -Werror -Wall
 
 #RUNNER=valgrind --leak-check=full --show-leak-kinds=all
 #CFLAGS+=-g
 # Enable run-time traces (%define parse.trace, RPN_DEBUG set to 1, RPN_debug can be set to activate tracing)
 # Generate the parser description file (%verbose)
 #BFLAGS+=--debug --verbose
+#BFLAGS+=-Wcounterexamples
 
 all: rpcli rphttpserver
 	$(RUNNER) ./"$<"
@@ -19,7 +20,7 @@ test_streamreader: test_streamreader.c genericstreamreader.o
 .INTERMEDIATE: rpcli.o
 rpcli.o: rpcli.c rpgrammar.tab.h rp_types.h rp_parser.h genericstreamreader.h
 ################################################
-.INTERMEDIATE: rpgrammar.tab.c rpgrammar.tab.o
+.INTERMEDIATE: rpgrammar.tab.h rpgrammar.tab.c rpgrammar.tab.o
 rpgrammar.tab.o: rpgrammar.tab.c rpgrammar.tab.h rp_types.h rp_parser.h rp_parser.c
 
 rpgrammar.tab.h: rp_types.h rp_parser.h genericstreamreader.h

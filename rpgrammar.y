@@ -43,6 +43,7 @@
 // Character tokens (among the ten digits, the 52 lower- and upper-case English letters, and \a\b\t\n\v\f\r !\"#%&'()*+,-./:;<=>?[\\]^_{|}~) are declared automatically.
 %token END 0 _("end of file")  // the end token (token 0) is specifically redefined.
 %token EOL _("end of line")
+%token SEP _("end of command")
 %token UNRECOGNIZED _("unrecognized word")
 
 %token <number> NUMBER _("number")
@@ -60,7 +61,7 @@
 
 %token MEMORY
 
-%type <number> simple_expression expression sum_of_expressions product_of_expressions calculation operation
+%type <number> terminal expression sum_of_expressions product_of_expressions calculation operation
 %type <symbol> no_arg
 
 // Initialisation before parsing.
@@ -76,8 +77,10 @@
 
 // Needed for sum_of_expressions and product_of_expressions to work.
 %glr-parser
-%expect 21
-%expect-rr 7
+%expect 24
+%expect-rr 8
+//%precedence SHIFT_FIRST
+//%precedence REDUCE_FIRST
 
 %start input
 %%
@@ -85,14 +88,15 @@
 // Always use left recursion only.
 input:
     %empty { _rpn_report_message (env, "rpn> "); }
-  | input command { _rpn_report_message (env, "rpn> "); }
+  | input command EOL { _rpn_report_message (env, "rpn> "); }
+  | input command SEP
   ;
 
 command:
-    EOL
-  | operation EOL { env->last_ans = env->last_res = $1 ; }
-  | statement EOL
-  | error EOL { yyerrok ; }
+    %empty
+  | operation { env->last_ans = env->last_res = $operation ; _rpn_report_number (env, $operation); }
+  | statement
+  | error { _rpn_report_error (env, _ ("ignored command")); yyerrok ; }
   ;
 
 statement:
@@ -101,15 +105,15 @@ statement:
 
 operation:
     calculation
-  | KNOWN_VARIABLE[var] '=' calculation { if ($3.type != UNDEFINED) RPN_set_var ($var, $$ = $3); }
-  | NEW_VARIABLE[varname] '=' calculation { if ($3.type != UNDEFINED) RPN_set_var (RPN_add_var (env, $varname), $$ = $3);
+  | KNOWN_VARIABLE[var] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var ($var, $$ = $calculation); }
+  | NEW_VARIABLE[varname] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var (RPN_add_var (env, $varname), $$ = $calculation);
                                             free ($varname); }
   ;
 
 calculation:
-    expression { $$ = $1 ; _rpn_report_number (env, $1); }
-  | sum_of_expressions '+' { $$ = $1 ; _rpn_report_number (env, $1); }
-  | product_of_expressions '*' { $$ = $1 ; _rpn_report_number (env, $1); }
+    expression
+  | sum_of_expressions '+'
+  | product_of_expressions '*'
   ;
 
 // Always use left recursion only.
@@ -125,17 +129,18 @@ product_of_expressions:
   ;
 
 expression:
-    simple_expression { env->last_res = $$ = $1; }
+    terminal { env->last_res = $$ = $terminal; }
+  | no_arg[function] { env->last_res = $$ = _rpn_f0a (env, $function); }
   | expression[first] F1A[function] { env->last_res = $$ = _rpn_f1a (env, $function, env->last_x = $first); }
   | expression[first] expression[second] F2A[function] { env->last_res = $$ = _rpn_f2a (env, $function, $first, env->last_x = $second); }
   ;
 
-simple_expression:
+terminal:
     NUMBER
   | LAST_X { $$ = env->last_x; }
   | LAST_RESULT { $$ = env->last_res; }
   | LAST_ANSWER { $$ = env->last_ans; }
-  | no_arg { $$ = _rpn_f0a (env, $1); }
+  | UNRECOGNIZED { _rpn_report_error (env, _ ("unrecognized word")); YYERROR; }
   ;
 
 no_arg: CONSTANT | KNOWN_VARIABLE | F0A ;

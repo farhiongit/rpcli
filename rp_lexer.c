@@ -1,5 +1,4 @@
 #undef NDEBUG
-#include "rpgrammar.tab.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -18,6 +17,10 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
   if ((c = stream_look_ahead (in, 1)) && iswspace ((wint_t)*c)) { // but not blank -> '\n', '\r', '\v', '\f'
     stream_forgetter (in) (stream_get (in));
     return RPN_EOL;
+  }
+  if ((c = stream_look_ahead (in, 1)) && *c == L';') {
+    stream_forgetter (in) (stream_get (in));
+    return RPN_SEP;
   }
   if (!c)
     return RPN_END;
