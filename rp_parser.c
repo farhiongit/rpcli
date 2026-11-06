@@ -679,9 +679,7 @@ _rpn_init (void) {
 
 #undef X
 #define X              \
-  DO (L"+", _rpn_add); \
   DO (L"-", _rpn_sub); \
-  DO (L"*", _rpn_mul); \
   DO (L"/", _rpn_div); \
   DO (L"%", _rpn_mod); \
   DO (L"pow", _rpn_pow);

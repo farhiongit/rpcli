@@ -46,6 +46,10 @@
 %token SEP _("end of command")
 %token UNRECOGNIZED _("unrecognized word")
 
+%token ASSIGN _("assignment")
+%token ADD _("sum")
+%token MUL _("product")
+
 %token <number> NUMBER _("number")
 %token <symbol> CONSTANT _("constant")
 %token <symbol> KNOWN_VARIABLE _("known variable")
@@ -77,10 +81,8 @@
 
 // Needed for sum_of_expressions and product_of_expressions to work.
 %glr-parser
-%expect 24
+%expect 26
 %expect-rr 8
-//%precedence SHIFT_FIRST
-//%precedence REDUCE_FIRST
 
 %start input
 %%
@@ -105,15 +107,15 @@ statement:
 
 operation:
     calculation
-  | KNOWN_VARIABLE[var] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var ($var, $$ = $calculation); }
-  | NEW_VARIABLE[varname] '=' calculation { if ($calculation.type != UNDEFINED) RPN_set_var (RPN_add_var (env, $varname), $$ = $calculation);
-                                            free ($varname); }
+  | KNOWN_VARIABLE[var] ASSIGN calculation { if ($calculation.type != UNDEFINED) RPN_set_var ($var, $$ = $calculation); }
+  | NEW_VARIABLE[varname] ASSIGN calculation { if ($calculation.type != UNDEFINED) RPN_set_var (RPN_add_var (env, $varname), $$ = $calculation);
+                                               free ($varname); }
   ;
 
 calculation:
     expression
-  | sum_of_expressions '+'
-  | product_of_expressions '*'
+  | sum_of_expressions ADD
+  | product_of_expressions MUL
   ;
 
 // Always use left recursion only.
@@ -133,6 +135,8 @@ expression:
   | no_arg[function] { env->last_res = $$ = _rpn_f0a (env, $function); }
   | expression[first] F1A[function] { env->last_res = $$ = _rpn_f1a (env, $function, env->last_x = $first); }
   | expression[first] expression[second] F2A[function] { env->last_res = $$ = _rpn_f2a (env, $function, $first, env->last_x = $second); }
+  | expression[first] expression[second] ADD { env->last_res = $$ = RPN_add (env, $first, env->last_x = $second); }
+  | expression[first] expression[second] MUL { env->last_res = $$ = RPN_mul (env, $first, env->last_x = $second); }
   ;
 
 terminal:

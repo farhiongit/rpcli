@@ -163,8 +163,8 @@ The generic stream reader with look-ahead capability ([genericstreamreader.h](ge
 - Create a new stream with `stream_create (Reader reader)` where `reader` is a user-defined sequential reader.
 - Read and consume one "character" from the stream with `stream_get (StreamReader *stream)` (which calls `read_fn` on the `instance` defined by the `reader`.)
 
-  - **Caution**: The i<sup>th</sup> call to `stream_get` **discards** the character previously returned by `stream_look_ahead (stream, `*i*`)`.
   - Once this character has been used, the function returned by `stream_forgetter (StreamReader *stream)` **should be applied** to this character to avoid memory leaks (writing something like `stream_forgetter (stream) (c)` ; `stream_forgetter` returns the function `forget_read_fn` defined by the `reader`.).
+  - **Caution**: The i<sup>th</sup> call to `stream_get` **discards** the character previously returned by `stream_look_ahead (stream, `*i*`)`.
 
 - Read ahead the n<sup>th</sup> "character", *without consuming it*, with `stream_look_ahead (StreamReader *stream, size_t n)`.
 - Destroy a stream with `stream_destroy (StreamReader *stream)` (which calls `free_instance_fn` on the `instance` defined by the `reader`.) 

@@ -41,7 +41,9 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
     const wchar_t *word;
     int token;
   } words[] = {
-    { L"=", '=' },
+    { L"=", RPN_ASSIGN },
+    { L"+", RPN_ADD },
+    { L"*", RPN_MUL },
     { L"_", RPN_LAST_X },
     { L"res", RPN_LAST_RESULT },
     { L"ans", RPN_LAST_ANSWER },
