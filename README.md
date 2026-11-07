@@ -163,7 +163,12 @@ The generic stream reader with look-ahead capability ([genericstreamreader.h](ge
 - Create a new stream with `stream_create (Reader reader)` where `reader` is a user-defined sequential reader.
 - Read and consume one "character" from the stream with `stream_get (StreamReader *stream)` (which calls `read_fn` on the `instance` defined by the `reader`.)
 
-  - Once this character has been used, the function returned by `stream_forgetter (StreamReader *stream)` **should be applied** to this character to avoid memory leaks (writing something like `stream_forgetter (stream) (c)` ; `stream_forgetter` returns the function `forget_read_fn` defined by the `reader`.).
+  - Once this character has been used, the function returned by `stream_forgetter (StreamReader *stream)` **should be applied** to this character to avoid memory leaks,
+    writing something like :
+
+    - `stream_forgetter (stream) (c)` (`stream_forgetter` returns the function `forget_read_fn` defined by the `reader`);
+    - or the shortcut `stream_get_and_forget (stream)` that reads, ignores and discards a character from the stream.
+
   - **Caution**: The i<sup>th</sup> call to `stream_get` **discards** the character previously returned by `stream_look_ahead (stream, `*i*`)`.
 
 - Read ahead the n<sup>th</sup> "character", *without consuming it*, with `stream_look_ahead (StreamReader *stream, size_t n)`.
@@ -173,16 +178,23 @@ The generic stream reader with look-ahead capability ([genericstreamreader.h](ge
 
 Four usual readers are provided for convenience, to be used directly by `stream_create`:
 
-- `ch_file_reader` calls `fgetc` internally on a file.
-- `wc_file_reader` calls `fgetwc` internally on a file.
+- `ch_file_reader (FILE *f)` calls `fgetc` internally on a file.
 
+  - The reader provides pointers to `char`.
+
+- `wc_file_reader (FILE *f)` calls `fgetwc` internally on a file.
+
+  - The reader provides pointers to `wchar_t`.
   - Used for example by [rpcli.c](rpcli.c).
 
-- `str_reader` mimics `fgetc` on a file that would have been opened by `fmemopen`.
+- `str_reader (char *source_str)` mimics `fgetc` on a file that would have been opened by `fmemopen`.
 
+  - The reader provides pointers to `char`.
   - Used for example by [test_streamreader.c](test_streamreader.c).
 
-- `wcs_reader` mimics `fgetwc` on a file that would have been opened by `fmemopen` (actually, `fmemopen` cannot be used on an multi-bytes character string, which is why this generic stream reader was written!).
+- `wcs_reader (wchar_t *source_str)` mimics `fgetwc` on a file that would have been opened by `fmemopen`
+  (but actually, `fmemopen` cannot be used on an multi-bytes character string, which is why this generic stream reader has been written!).
 
+  - The reader provides pointers to `wchar_t`.
   - Used for example by [rphttpserver.c](rphttpserver.c).
 

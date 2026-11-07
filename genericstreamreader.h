@@ -3,6 +3,12 @@
 
 #include <stddef.h>
 
+#define stream_get_and_forget(stream)                  \
+  do {                                                 \
+    StreamReader *__gsr__ = (stream);                  \
+    stream_forgetter (__gsr__) (stream_get (__gsr__)); \
+  } while (0)
+
 typedef void (*free_prototype) (void *);
 typedef struct {
   void *instance;                    // Pointer to the concrete structure (FILE*, string, etc.)
