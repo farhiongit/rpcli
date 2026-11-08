@@ -23,8 +23,8 @@ rpcli.o: rpcli.c rpgrammar.tab.h rp_types.h rp_parser.h genericstreamreader.h
 .INTERMEDIATE: rpgrammar.tab.h rpgrammar.tab.c rpgrammar.tab.o
 rpgrammar.tab.o: rpgrammar.tab.c rpgrammar.tab.h rp_types.h rp_parser.h
 
-rpgrammar.tab.h: rp_types.h rp_parser.h genericstreamreader.h rp_parser.c rp_lexer.c
-rpgrammar.tab.c: rp_types.h rp_parser.h rp_parser.c genericstreamreader.h rp_parser.c rp_lexer.c
+rpgrammar.tab.h: rp_types.h rp_parser.h genericstreamreader.h
+rpgrammar.tab.c: rp_types.h rp_parser.h rp_parser.c genericstreamreader.h rp_lexer.c
 
 # Group of multiple targets (with "&:" in GNU make 4.3 and later).
 # https://www.gnu.org/software/make/manual/html_node/Multiple-Targets.html
