@@ -160,19 +160,44 @@ Word | Description
 
 The generic stream reader with look-ahead capability ([genericstreamreader.h](genericstreamreader.h) and [genericstreamreader.c](genericstreamreader.c) works like this:
 
-- Create a new stream with `stream_create (Reader reader)` where `reader` is a user-defined sequential reader.
-- Read and consume one "character" from the stream with `stream_get (StreamReader *stream)` (which calls `read_fn` on the `instance` defined by the `reader`.)
+1. Create a new stream with `stream_create (Reader reader)` where `reader` is a user-defined sequential reader.
 
-  - Once this character has been used, the function returned by `stream_forgetter (StreamReader *stream)` **should be applied** to this character to avoid memory leaks,
-    writing something like :
+   A `reader` is a structure provided by the user, either user-defined or amongst those proposed [below](#helpers). It contains:
 
-    - `stream_forgetter (stream) (c)` (`stream_forgetter` returns the function `forget_read_fn` defined by the `reader`);
-    - or the shortcut `stream_get_and_forget (stream)` that reads, ignores and discards a character from the stream.
+     - `instance`, a mandatory pointer to the source of the stream (`FILE*`, a string, etc.)
+     - `free_instance_fn`, an optional deallocator to free memory that could be allocated to make the `instance`.
+     - `read_fn`, the mandatory function that reads the next character from the instance or returns `0` in the event of an end-of-stream or error.
+     - `forget_read_fn`, an optional character deallocator to free memory that could be allocated by `read_fn`.
 
-  - **Caution**: The i<sup>th</sup> call to `stream_get` **discards** the character previously returned by `stream_look_ahead (stream, `*i*`)`.
+2. Read caharacters from the stream:
 
-- Read ahead the n<sup>th</sup> "character", *without consuming it*, with `stream_look_ahead (StreamReader *stream, size_t n)`.
-- Destroy a stream with `stream_destroy (StreamReader *stream)` (which calls `free_instance_fn` on the `instance` defined by the `reader`.) 
+   1. Read ahead the n<sup>th</sup> "character" of the streeam, *without consuming it*, with `stream_look_ahead (StreamReader *stream, size_t n)`.
+
+      - `stream_look_ahead` returns a *pointer* to the look-ahead character or `0`.
+
+   2. Read and consume the next "character" from the stream with `stream_get (StreamReader *stream)` (which calls `read_fn` on the `instance` defined by the `reader`.)
+
+      - `stream_get` returns a *pointer* to the next character or `0`.
+      - Once this character has been used, the function `forget_read_fn` **should be applied** to this character to avoid memory leaks.
+
+      > `forget_read_fn` can be retreived by `stream_forgetter`, allowing to write something like `stream_forgetter (stream) (c)` (which has no effect if `forget_read_fn` is `0`).
+
+   3. Ignore and discard the next character from the stream with `stream_get_and_forget (stream)`.
+
+      - It is a shortcut for `stream_forgetter (stream) (stream_get (stream))` that reads the next character and applies, if defined, `forget_read_fn` to it.
+
+   > **Caution**: The n<sup>th</sup> call to `stream_get` of `stream_get_and_forget` **invalidates** the character previously returned by `stream_look_ahead (stream, `*n*`)`.
+
+      A usual snippet in a lexer could look like :
+
+```c
+   if ((c = stream_look_ahead (stream, 1)) && match_expected (c)) {
+     ... // Do your stuff here using c
+     stream_get_and_forget (stream);  // c is invalidated and cannot be used anymore.
+   }
+```
+
+3. Destroy a stream with `stream_destroy (StreamReader *stream)` (which calls `free_instance_fn` on the `instance` defined by the `reader`.)
 
 ### Helpers
 

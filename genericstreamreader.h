@@ -3,17 +3,11 @@
 
 #include <stddef.h>
 
-#define stream_get_and_forget(stream)                  \
-  do {                                                 \
-    StreamReader *__gsr__ = (stream);                  \
-    stream_forgetter (__gsr__) (stream_get (__gsr__)); \
-  } while (0)
-
 typedef void (*free_prototype) (void *);
 typedef struct {
   void *instance;                    // Pointer to the concrete structure (FILE*, string, etc.)
-  free_prototype free_instance_fn;   // Optional deallocator to free memory allocated by the reader used by stream_create.
-  void *(*read_fn) (void *instance); // Function to read a character from the instance (returns the character read, or EOF in the event of an end-of-stream or error.)
+  free_prototype free_instance_fn;   // Optional deallocator to free memory allocated by the reader to make the instance.
+  void *(*read_fn) (void *instance); // Function to read the next character from the instance (or 0 in the event of an end-of-stream or error.)
   free_prototype forget_read_fn;     // Optional character deallocator to free memory allocated by read_fn.
 } Reader;
 
@@ -27,7 +21,7 @@ stream_create (Reader reader);
 // Destroy a stream.
 void stream_destroy (StreamReader *stream);
 
-// Read a character from the stream.
+// Read the next character from the stream.
 // Returns:
 // - 0 if the end of the stream is reached or an error occurs;
 // - errno is set if an error occurs while reading from the stream via stream->read_fn;
@@ -46,6 +40,8 @@ void *stream_look_ahead (StreamReader *stream, size_t n);
 // This returned function must be applied to the result of a call to stream_get to avoid memory leaks.
 free_prototype stream_forgetter (StreamReader *stream);
 
+// Discards the next character from the stream (applies, if defined, forget_read_fn to the next character).
+void stream_get_and_forget (StreamReader *stream);
 //================== HELPERS  for stream_create ======================
 #include <stdio.h>
 #include <wchar.h>

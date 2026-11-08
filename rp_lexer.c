@@ -52,9 +52,10 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
   };
 
   // keywords
-  for (size_t i = 0; token < 0 && i < sizeof (words) / sizeof (*words); i++)
-    if (!wcscmp (words[i].word, wcs))
-      token = words[i].token;
+  if (token < 0)
+    for (size_t i = 0; token < 0 && i < sizeof (words) / sizeof (*words); i++)
+      if (!wcscmp (words[i].word, wcs))
+        token = words[i].token;
 
   // integer number
   if (token < 0) {

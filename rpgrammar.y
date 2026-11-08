@@ -23,8 +23,8 @@
 
 // Code needed by the parser, inserted at the beginning of the parser IMPLEMENTATION file only, BEFORE the definition of yyparse.
 %code {
-  #include "rp_lexer.c"   // Lexer code included here.
   #include "rp_parser.c"
+  #include "rp_lexer.c"   // Lexer code included here.
 } // %code
 
 // Declarations.
@@ -81,8 +81,8 @@
 
 // Needed for sum_of_expressions and product_of_expressions to work.
 %glr-parser
-%expect 26
-%expect-rr 8
+%expect 23
+%expect-rr 7
 
 %start input
 %%
@@ -98,7 +98,7 @@ command:
     %empty
   | operation { env->last_ans = env->last_res = $operation ; _rpn_report_number (env, $operation); }
   | statement
-  | error { _rpn_report_error (env, _ ("ignored command")); yyerrok ; }
+  | error { _rpn_report_error (env, _ ("ignored command")); }
   ;
 
 statement:
@@ -144,7 +144,6 @@ terminal:
   | LAST_X { $$ = env->last_x; }
   | LAST_RESULT { $$ = env->last_res; }
   | LAST_ANSWER { $$ = env->last_ans; }
-  | UNRECOGNIZED { _rpn_report_error (env, _ ("unrecognized word")); YYERROR; }
   ;
 
 no_arg: CONSTANT | KNOWN_VARIABLE | F0A ;

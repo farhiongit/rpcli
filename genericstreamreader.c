@@ -136,6 +136,9 @@ stream_forgetter (StreamReader *stream) {
     return _noop;
 }
 
+void
+stream_get_and_forget (StreamReader *stream) { stream_forgetter (stream) (stream_get (stream)); }
+
 //================== HELPERS ======================
 static void *
 ch_file_reader_adapter (void *f) {
