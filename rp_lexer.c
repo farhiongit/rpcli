@@ -30,14 +30,40 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
   wchar_t *wcs = malloc (sizeof (*wcs));
   wcs[0] = L'\0';
   size_t length = 0;
-  while ((c = stream_look_ahead (in, 1)) && !iswspace ((wint_t)*c)) { // any character can be part of a word
+  while ((c = stream_look_ahead (in, length + 1)) && !iswspace ((wint_t)*c)) { // any character can be part of a word
     wcs[length] = (wchar_t)(*c);
     wcs = realloc (wcs, (++length + 1) * sizeof (*wcs));
     wcs[length] = L'\0';
-    stream_get_and_forget (in);
   }
 
   int token = -1;
+  size_t advance = 0;
+
+  // decimal number
+  if (token < 0) {
+    errno = 0;
+    wchar_t *endptr;
+    RPN_lval->number = from_decimal (wcstold (wcs, &endptr));
+    if (errno == ERANGE)
+      _rpn_report_error (env, _ ("out of range"));
+    else if (!errno && endptr != wcs) {
+      token = RPN_NUMBER;
+      advance = (size_t)(endptr - wcs);
+    }
+  }
+
+  // integer number
+  if (token < 0) {
+    errno = 0;
+    wchar_t *endptr;
+    RPN_lval->number = from_integer (wcstoll (wcs, &endptr, 0));
+    if (errno == ERANGE)
+      _rpn_report_error (env, _ ("out of range"));
+    else if (!errno && endptr != wcs) {
+      token = RPN_NUMBER;
+      advance = (size_t)(endptr - wcs);
+    }
+  }
 
   static struct {
     const wchar_t *word;
@@ -56,32 +82,21 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
   // keywords
   if (token < 0)
     for (size_t i = 0; token < 0 && i < sizeof (words) / sizeof (*words); i++)
-      if (!wcscmp (words[i].word, wcs))
+      if (!wcscmp (words[i].word, wcs)) {
         token = words[i].token;
-
-  // integer number
-  if (token < 0) {
-    errno = 0;
-    wchar_t *endptr;
-    RPN_lval->number = from_integer (wcstoll (wcs, &endptr, 0));
-    if (!errno && !*endptr && endptr != wcs) {
-      token = RPN_NUMBER;
-    }
-  }
-
-  // decimal number
-  if (token < 0) {
-    errno = 0;
-    wchar_t *endptr;
-    RPN_lval->number = from_decimal (wcstold (wcs, &endptr));
-    if (!errno && !*endptr && endptr != wcs) {
-      token = RPN_NUMBER;
-    }
-  }
+        advance = wcslen (wcs);
+      }
 
   // functions, constants and variables
   if (token < 0) {
-    if ((RPN_lval->symbol = from_name (env, wcs))) {
+    wchar_t *validname = wcsdup (wcs);
+    if (*validname == L'_' || iswalpha ((wint_t)(*validname)))
+      for (advance = 1; iswalnum ((wint_t)validname[advance]); advance++) {
+      /**/ }
+    validname[advance] = L'\0';
+    if (*validname == L'\0')
+      /**/;
+    else if ((RPN_lval->symbol = from_name (env, validname))) {
       switch (RPN_lval->symbol->type) {
       case FUNCTION:
         switch (RPN_lval->symbol->value.function.type) {
@@ -113,8 +128,7 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
         }
         break;
       case VARIABLE:
-        if (*wcs == L'_' || iswalpha ((wint_t)(*wcs)))
-          token = RPN_KNOWN_VARIABLE;
+        token = RPN_KNOWN_VARIABLE;
         break;
       case CONSTANT:
         token = RPN_CONSTANT;
@@ -122,11 +136,16 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
       default:
         break;
       }
-    } else if (*wcs == L'_' || iswalpha ((wint_t)(*wcs))) {
-      RPN_lval->newvar_name = wcsdup (wcs);
+      free (validname);
+    } // if ((RPN_lval->symbol = from_name (env, wcs)))
+    else {
       token = RPN_NEW_VARIABLE;
-    }
-  }
+      RPN_lval->newvar_name = validname;
+    } // if (*wcs == L'_' || iswalpha ((wint_t)(*wcs)))
+  } // if (token < 0)
+
+  for (; advance; advance--)
+    stream_get_and_forget (in);
 
   free (wcs);
 

@@ -202,7 +202,7 @@ RPN_add (context *env, number a, number b) {
   }
 
   catch_exception (out_of_range_error) {
-    errno = EPERM;
+    errno = ERANGE;
     _rpn_report_error (env, _ ("out of range"));
     return UNDEFINED_VALUE;
   }
@@ -232,7 +232,7 @@ RPN_mul (context *env, number a, number b) {
   }
 
   catch_exception (out_of_range_error) {
-    errno = EPERM;
+    errno = ERANGE;
     _rpn_report_error (env, _ ("out of range"));
     return UNDEFINED_VALUE;
   }
@@ -249,7 +249,7 @@ _rpn_f0a (context *env, symbol *symref) {
   }
 
   catch_exception (out_of_range_error) {
-    errno = EPERM;
+    errno = ERANGE;
     _rpn_report_error (env, _ ("out of range"));
     return UNDEFINED_VALUE;
   }
@@ -308,7 +308,7 @@ _rpn_f1a (context *env, symbol *symref, number a) {
   }
 
   catch_exception (out_of_range_error) {
-    errno = EPERM;
+    errno = ERANGE;
     _rpn_report_error (env, _ ("out of range"));
     return UNDEFINED_VALUE;
   }
@@ -364,7 +364,7 @@ _rpn_f2a (context *env, symbol *symref, number a, number b) {
   }
 
   catch_exception (out_of_range_error) {
-    errno = EPERM;
+    errno = ERANGE;
     _rpn_report_error (env, _ ("out of range"));
     return UNDEFINED_VALUE;
   }
@@ -563,7 +563,6 @@ _rpn_fact (integer a) {
   integer ret = 1;
   if (a < 0) {
     throw_exception (out_of_range_error);
-    errno = EPERM;
     return 0;
   }
 
