@@ -20,7 +20,7 @@ test_streamreader: test_streamreader.c genericstreamreader.o
 .INTERMEDIATE: rpcli.o
 rpcli.o: rpcli.c rpgrammar.tab.h rp_types.h rp_parser.h genericstreamreader.h
 ################################################
-.INTERMEDIATE: rpgrammar.tab.h rpgrammar.tab.c rpgrammar.tab.o
+.INTERMEDIATE: rpgrammar.tab.c rpgrammar.tab.o # Preserve rpgrammar.tab.h needed for statical analysis.
 rpgrammar.tab.o: rpgrammar.tab.c rpgrammar.tab.h rp_types.h rp_parser.h
 
 rpgrammar.tab.h: rp_types.h rp_parser.h genericstreamreader.h

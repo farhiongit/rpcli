@@ -1,4 +1,5 @@
 #include "rp_parser.h"
+#include "genericstreamreader.h"
 #include <errno.h>
 #include <limits.h>
 #include <math.h>

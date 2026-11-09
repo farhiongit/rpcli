@@ -2,7 +2,6 @@
 #include "rpgrammar.tab.h"
 #include <locale.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #define _(str) (str) // i18n
 

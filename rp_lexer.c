@@ -1,4 +1,6 @@
 #undef NDEBUG
+#include "genericstreamreader.h"
+#include "rp_types.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
