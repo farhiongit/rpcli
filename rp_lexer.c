@@ -90,9 +90,8 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
   // functions, constants and variables
   if (token < 0) {
     wchar_t *validname = wcsdup (wcs);
-    if (*validname == L'_' || iswalpha ((wint_t)(*validname)))
-      for (advance = 1; iswalnum ((wint_t)validname[advance]); advance++) {
-      /**/ }
+    for (advance = 0; iswgraph ((wint_t)validname[advance]) && !iswdigit ((wint_t)validname[advance]); advance++) {
+    /**/ }
     validname[advance] = L'\0';
     if (*validname == L'\0')
       /**/;
