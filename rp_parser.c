@@ -103,7 +103,7 @@ symrec_add (context *env, symbol element) {
   symrec *symref = malloc (sizeof (*symref));
   if (!symref || !(element.name = wcsdup (element.name))) {
     errno = ENOMEM;
-    _rpn_report_error (env, _ ("memory allocation error"));
+    _rpn_report_error (env, _ ("memory exhausted"));
     return 0;
   } else {
     symref->symbol = element;
@@ -597,7 +597,7 @@ _rpn_init (void) {
   context *env = calloc (1, sizeof (*env));
   if (!env) {
     errno = ENOMEM;
-    _rpn_report_error (0, _ ("memory allocation error"));
+    _rpn_report_error (0, _ ("memory exhausted"));
     return 0;
   }
 
@@ -707,15 +707,6 @@ RPN_cleanup (context *env) {
     free (symref);
   }
   free (env);
-}
-
-symbol *
-from_name (context *env, const wchar_t *name) {
-  for (symrec *s = env->sym_table; s; s = s->next)
-    if (!wcscmp (name, s->symbol.name))
-      return &s->symbol;
-
-  return 0;
 }
 
 number

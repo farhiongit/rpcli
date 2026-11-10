@@ -13,7 +13,6 @@ struct report {
 context *RPN_init (struct report r);
 void RPN_cleanup (context *env);
 
-symbol *from_name (context *env, const wchar_t *name);
 number from_integer (integer);
 number from_decimal (decimal);
 
