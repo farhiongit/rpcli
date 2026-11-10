@@ -2,10 +2,12 @@
 #include "genericstreamreader.h"
 #include <assert.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 static const size_t INITIAL_CAPACITY = 1;
+static const size_t MAXIMUM_CAPACITY = 1024;
 
 struct StreamReader {
   Reader reader; // L'interface de lecture générique
@@ -21,7 +23,7 @@ static bool
 stream_resize (StreamReader *stream) {
   void *old_buffer = stream->buffer;
   size_t new_capacity = stream->capacity * 2;
-  if (!((stream->buffer = realloc (stream->buffer, new_capacity * sizeof (*stream->buffer)))))
+  if (new_capacity > MAXIMUM_CAPACITY || !((stream->buffer = realloc (stream->buffer, new_capacity * sizeof (*stream->buffer)))))
     return (stream->buffer = old_buffer), (errno = ENOMEM), false;
 
   // Réarrangement
@@ -42,7 +44,7 @@ stream_fill (StreamReader *stream, size_t need_distance) {
     assert (stream->size <= stream->capacity);
     if (stream->size == stream->capacity) { // full
       if (!stream_resize (stream))
-        return false;
+        break;
     }
 
     // Appel à l'interface générique (au lieu de fgetwc)
@@ -57,7 +59,7 @@ stream_fill (StreamReader *stream, size_t need_distance) {
     stream->tail = (stream->tail + 1) % stream->capacity;
     stream->size++;
   } // while (!stream->is_eof && stream->size < need_distance)
-  return !stream->is_eof;
+  return stream->size >= need_distance;
 }
 
 static void
@@ -101,9 +103,9 @@ stream_get (StreamReader *stream) {
   if (!stream_fill (stream, 1))
     return 0;
 
+  assert (stream->size);
   void *c = stream->buffer[stream->head];
   stream->head = (stream->head + 1) % stream->capacity;
-  assert (stream->size);
   stream->size--;
   return c;
 }
@@ -114,6 +116,7 @@ stream_look_ahead (StreamReader *stream, size_t distance) {
   if (!stream_fill (stream, distance))
     return 0;
 
+  assert (stream->size >= distance);
   size_t index = (stream->head + distance - 1) % stream->capacity;
   return stream->buffer[index];
 }
