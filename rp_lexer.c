@@ -76,6 +76,7 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
   }
 
   wchar_t *validkw = wcsdup (wcs);
+  int freevalidkw = 1;
   wchar_t *wc = validkw;
   for (; (iswpunct ((wint_t)*validkw) ? iswpunct : iswalpha) ((wint_t)*wc); wc++) {
     /* valid keywords are either only letters or only punctuation */
@@ -101,7 +102,6 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
     if (!wcscmp (words[i].word, validkw)) {
       token = words[i].token;
       advance = wcslen (words[i].word);
-      free (validkw);
     }
 
   // functions, constants and variables
@@ -147,14 +147,17 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in) {
       default:
         break;
       }
-      free (validkw);
     } // if ((RPN_lval->symbol = from_name (env, validkw)))
     else if (iswalpha ((wint_t)*validkw)) {
       token = RPN_NEW_VARIABLE;
       RPN_lval->newvar_name = validkw;
       advance = wcslen (validkw);
+      freevalidkw = 0; // don't free validkw
     }
   } // if (token < 0 && *validkw != L'\0')
+
+  if (freevalidkw)
+    free (validkw);
 
   if (token < 0)
     advance = wcslen (wcs); // Discard the whole word.
