@@ -7,7 +7,9 @@
 #include <stdlib.h>
 
 static const size_t INITIAL_CAPACITY = 1;
-static const size_t MAXIMUM_CAPACITY = 1024;
+#ifndef MAXIMUM_CAPACITY
+#define MAXIMUM_CAPACITY 1024
+#endif
 
 struct StreamReader {
   Reader reader; // L'interface de lecture générique
@@ -23,8 +25,10 @@ static bool
 stream_resize (StreamReader *stream) {
   void *old_buffer = stream->buffer;
   size_t new_capacity = stream->capacity * 2;
-  if (new_capacity > MAXIMUM_CAPACITY || !((stream->buffer = realloc (stream->buffer, new_capacity * sizeof (*stream->buffer)))))
-    return (stream->buffer = old_buffer), (errno = ENOMEM), false;
+  if (new_capacity > ((size_t)(MAXIMUM_CAPACITY)))
+    return (errno = ENOMEM), false;
+  else if (!((stream->buffer = realloc (stream->buffer, new_capacity * sizeof (*stream->buffer)))))
+    return (stream->buffer = old_buffer), false;
 
   // Réarrangement
   if (stream->tail <= stream->head) {
@@ -81,20 +85,20 @@ stream_create (Reader reader) {
 
   StreamReader *stream = malloc (sizeof (*stream));
   if (!stream)
-    return (errno = ENOMEM), NULL;
+    return NULL;
 
   stream->reader = reader;
   stream->capacity = INITIAL_CAPACITY ? INITIAL_CAPACITY : 1;
   stream->buffer = malloc (stream->capacity * sizeof (*stream->buffer));
+  if (!stream->buffer) {
+    free (stream);
+    return NULL;
+  }
   stream->head = 0;
   stream->tail = 0;
   stream->size = 0;
   stream->is_eof = false;
 
-  if (!stream->buffer) {
-    free (stream);
-    return (errno = ENOMEM), NULL;
-  }
   return stream;
 }
 
@@ -103,7 +107,6 @@ stream_get (StreamReader *stream) {
   if (!stream_fill (stream, 1))
     return 0;
 
-  assert (stream->size);
   void *c = stream->buffer[stream->head];
   stream->head = (stream->head + 1) % stream->capacity;
   stream->size--;
@@ -116,7 +119,6 @@ stream_look_ahead (StreamReader *stream, size_t distance) {
   if (!stream_fill (stream, distance))
     return 0;
 
-  assert (stream->size >= distance);
   size_t index = (stream->head + distance - 1) % stream->capacity;
   return stream->buffer[index];
 }
@@ -148,7 +150,8 @@ ch_file_reader_adapter (void *f) {
   if (ch == EOF)
     return 0;
   int *c = malloc (sizeof (c));
-  assert (c);
+  if (!c)
+    return 0;
   *c = ch;
   return c;
 }
@@ -164,7 +167,8 @@ wc_file_reader_adapter (void *f) {
   if (wc == WEOF)
     return 0;
   wint_t *c = malloc (sizeof (c));
-  assert (c);
+  if (!c)
+    return 0;
   *c = wc;
   return c;
 }
@@ -193,8 +197,10 @@ str_read_adapter (void *instance) {
 Reader
 str_reader (char *source_str) {
   struct StringReaderCtx *ctx = malloc (sizeof (*ctx));
-  ctx->str = source_str;
-  ctx->cursor = 0;
+  if (ctx) {
+    ctx->str = source_str;
+    ctx->cursor = 0;
+  }
   return (Reader){ .instance = ctx, .read_fn = str_read_adapter, .free_instance_fn = free };
 }
 
@@ -212,7 +218,9 @@ wcs_read_adapter (void *instance) {
 Reader
 wcs_reader (wchar_t *source_str) {
   struct StringReaderCtx *ctx = malloc (sizeof (*ctx));
-  ctx->str = source_str;
-  ctx->cursor = 0;
+  if (ctx) {
+    ctx->str = source_str;
+    ctx->cursor = 0;
+  }
   return (Reader){ .instance = ctx, .read_fn = wcs_read_adapter, .free_instance_fn = free };
 }

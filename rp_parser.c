@@ -101,16 +101,19 @@ _rpn_report_message (context *env, const char *restrict format, ...) {
 static symbol *
 symrec_add (context *env, symbol element) {
   symrec *symref = malloc (sizeof (*symref));
-  if (!symref || !(element.name = wcsdup (element.name))) {
-    errno = ENOMEM;
-    _rpn_report_error (env, _ ("memory exhausted"));
-    return 0;
-  } else {
+  if (!symref)
+    /**/;
+  else if (!(element.name = wcsdup (element.name)))
+    free (symref);
+  else {
     symref->symbol = element;
     symref->next = env->sym_table;
     env->sym_table = symref;
     return &symref->symbol;
   }
+
+  _rpn_report_error (env, _ ("memory exhausted"));
+  return 0;
 }
 
 static symbol *
@@ -122,9 +125,10 @@ RPN_add_var (context *env, wchar_t *name) {
 
 static number
 RPN_set_var (symbol *symref, number val) {
+  if (!symref)
+    return val;
   if (symref->type == VARIABLE && val.type != UNDEFINED)
     symref->value.number = val;
-
   return symref->value.number;
 }
 
@@ -596,7 +600,6 @@ static context *
 _rpn_init (void) {
   context *env = calloc (1, sizeof (*env));
   if (!env) {
-    errno = ENOMEM;
     _rpn_report_error (0, _ ("memory exhausted"));
     return 0;
   }

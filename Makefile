@@ -4,6 +4,7 @@ BFLAGS+=--language=C -Werror -Wall
 
 #RUNNER=valgrind --leak-check=full --show-leak-kinds=all
 #CFLAGS+=-g
+#CFLAGS+=-fanalyzer
 # Enable run-time traces (%define parse.trace, RPN_DEBUG set to 1, RPN_debug can be set to activate tracing)
 # Generate the parser description file (%verbose)
 #BFLAGS+=--debug --verbose
