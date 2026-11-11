@@ -64,7 +64,7 @@ Line | Result | Comment
 `5 7 * res +` | `70 [integer]` | `res` equals `42`, the previous operand, as calculated as `5 7 *`.
 `6 3 + 2 res * -` | `5 [integer]` | `res` equals `2`, the previous operand.
 `6 3 + 2 _ * -` | `3 [integer]` | `_` equals `3`, the last operand of the previous operation `6 3 +`.
-`6 3 + 2 ans * -` | `-1 [integer]` | `ans` equals `5`, the result of the calculation of the last command line.
+`6 3 + 2 ans * -` | `3 [integer]` | `ans` equals `3`, the result of the calculation of the last command line.
 `vars` | `r = 129474 ...` | List all user-defined variables.
 `exit` | `Bye!` | Quit.
 

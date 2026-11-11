@@ -1,0 +1,43 @@
+2 3 *
+2.22e1 -800 +
+1 2 + 7 * 5 //
+2 7 / sqr pi *
+pi neg cos
+11 1 2 + % _ ^
+ans neg
+10.6 4 %
+1 2 3 *
+1 2 3 2 2 * +
+a = 9 10 / inv exp
+-1.7e3 a * sin
+200 log
+e ans 1 + pow ln
+2 sqrt ceil neg
+10 sqrt round
+r = 1e6 rand * floor
+5 res * res * sqrt
+5 ans * ans * sqrt
+5 7 * _ +
+5 7 * res +
+6 3 + 2 res * -
+6 3 + 2 _ * -
+6 3 + 2 ans * -
+vars
+
+100pi2*
+5sin51+ 50-
+b = pi
+b=e 
+16 5//
+15 5- 6+
+b
+5pi cos/
+
+pi=e
+5 0 //
+1000000000000000000000000000000000000000000000000000000000
+1e5000
+-1 ln
+25!
+2.5 5 &
+exit

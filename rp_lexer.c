@@ -30,7 +30,7 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in /* reading wchar_t 
     return RPN_EOL;
   } else if (*c == L';') {
     stream_get_and_forget (in);
-    return RPN_SEP;
+    return RPN_EOC;
   }
 
   wchar_t *wcs = malloc (sizeof (*wcs));

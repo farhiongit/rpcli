@@ -11,7 +11,7 @@ BFLAGS+=--language=C -Werror -Wall
 #BFLAGS+=-Wcounterexamples
 
 all: rpcli rphttpserver
-	$(RUNNER) ./"$<"
+	$(RUNNER) ./"$<" < "rp_test.txt"
 
 rpcli: LDLIBS=-lm
 rpcli: rpgrammar.tab.o rpcli.o genericstreamreader.o

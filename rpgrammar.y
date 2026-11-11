@@ -43,7 +43,7 @@
 // Character tokens (among the ten digits, the 52 lower- and upper-case English letters, and \a\b\t\n\v\f\r !\"#%&'()*+,-./:;<=>?[\\]^_{|}~) are declared automatically.
 %token END 0 _("end of file")  // the end token (token 0) is specifically redefined.
 %token EOL _("end of line")
-%token SEP _("end of command")
+%token EOC _("end of command")
 %token UNRECOGNIZED _("unrecognized word")
 
 %token ASSIGN _("assignment")
@@ -91,7 +91,7 @@
 input:
     %empty { _rpn_report_message (env, "rpn> "); }
   | input command EOL { _rpn_report_message (env, "rpn> "); }
-  | input command SEP
+  | input command EOC
   ;
 
 command:
