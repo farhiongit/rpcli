@@ -24,8 +24,8 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in /* reading wchar_t 
     stream_get_and_forget (in);
 
   if (!(c = stream_look_ahead (in, 1))) // End of stream
-    return RPN_END;
-  else if (iswspace ((wint_t)*c)) { // but not iswblank -> '\n', '\r', '\v', '\f'
+    return RPN_END;                     // Stop parsing.
+  else if (iswspace ((wint_t)*c)) {     // But not iswblank, therefore '\n', '\r', '\v' or '\f'
     stream_get_and_forget (in);
     return RPN_EOL;
   } else if (*c == L';') {
@@ -36,18 +36,22 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in /* reading wchar_t 
   wchar_t *wcs = malloc (sizeof (*wcs));
   if (!wcs) {
     _rpn_report_error (env, _ ("memory exhausted"));
-    return RPN_UNRECOGNIZED;
+    return RPN_END; // Stop parsing.
   }
   wcs[0] = L'\0';
   size_t length = 0;
   while ((c = stream_look_ahead (in, length + 1)) && !iswspace ((wint_t)*c)) { // any character can be part of a word (even not printable)
-    wcs[length] = (wchar_t)(*c);
-    wcs = realloc (wcs, (++length + 1) * sizeof (*wcs));
+    void *oldwcs = wcs;
+    wcs = realloc (wcs, (length + 2) * sizeof (*wcs));
+    // If realloc fails, the original block is left untouched; it is not freed or moved.
     if (!wcs) {
       _rpn_report_error (env, _ ("memory exhausted"));
-      return RPN_UNRECOGNIZED;
+      free (oldwcs);
+      return RPN_END; // Stop parsing.
     }
-    wcs[length] = L'\0';
+    wcs[length] = (wchar_t)(*c);
+    wcs[length + 1] = L'\0';
+    length++;
   }
 
   int token = -1;
@@ -172,7 +176,7 @@ RPN_lex (RPN_STYPE *RPN_lval, context *env, StreamReader *in /* reading wchar_t 
     } //  if (validkw)
   } // if (token < 0)
 
-  if (token < 0)
+  if (token < 0 || token == RPN_UNRECOGNIZED)
     advance = wcslen (wcs); // Discard the whole word.
 
   for (; advance; advance--)
